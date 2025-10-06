@@ -1,0 +1,106 @@
+[
+  "g00gle",
+  "g0ogle",
+  "gοοgle",                     
+
+  "paypa1",
+  "paypaI",
+  "paypall",
+  "paypal-secure",
+  "paypal-login",
+  "paypalverify",
+
+  "faceb00k",
+  "faceboook",
+  "facebook-login",
+  "facebook-secure",
+
+  "amazon-login",
+  "amazon-secure",
+  "amaz0n",
+
+  "appleid",
+  "apple-login",
+  "appleid.verify",
+
+  "bank-login",
+  "secure-bank",
+  "online-banking",
+  "bank-update",
+  "bank.verify",
+
+  "login-secure",
+  "secure-login",
+  "account.verify",
+  "verify-account",
+  "update-account",
+  "confirm-account",
+  "confirm-payment",
+
+  "verify-your-account",
+  "reset-password",
+  "password-reset",
+  "change-password",
+  "update-password",
+
+  "xn--",                        
+
+  "\\b\\d{1,3}(?:\\.\\d{1,3}){3}\\b",  
+
+  "\\.ru(?:\\/|$)",
+  "\\.cn(?:\\/|$)",
+  "\\.tk(?:\\/|$)",
+  "\\.ml(?:\\/|$)",
+  "\\.ga(?:\\/|$)",
+  "\\.cf(?:\\/|$)",
+  "\\.gq(?:\\/|$)",
+
+  "\\.top(?:\\/|$)",
+  "\\.xyz(?:\\/|$)",
+  "\\.loan(?:\\/|$)",
+  "\\.win(?:\\/|$)",
+  "\\.support(?:\\/|$)",
+  "\\.review(?:\\/|$)",
+  "\\.click(?:\\/|$)",
+
+  "secure-pay",
+  "payment-update",
+  "payment-confirm",
+  "billing-info",
+  "billing-update",
+
+  "signin",
+  "sign-in",
+  "log-in",
+  "logon",
+  "auth",
+  "authentication",
+
+  "free-gift",
+  "congratulations",
+  "you-are-selected",
+  "claim-prize",
+  "prize-winner",
+
+  "update-info",
+  "profile-update",
+  "security-alert",
+  "suspicious-activity",
+  "account-locked",
+  "unlock-account",
+
+  "paypal-security",
+  "apple-security",
+  "google-security",
+  "amazon-security",
+  "microsoft-security",
+
+  "securepay",
+  "paysecure",
+  "banksecure",
+
+  "support-center",
+  "help-desk",
+  "customer-service",
+  "customer-support"
+]

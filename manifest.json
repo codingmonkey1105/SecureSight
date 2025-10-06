@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "SecureSight",
+  "version": "1.0",
+  "description": "Detects suspicious websites with basic security checks.",
+  "permissions": ["tabs", "activeTab", "scripting", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "padlock.png",
+      "48": "padlock.png",
+      "128": "padlock.png"
+    }
+  },
+  "icons": {
+    "16": "padlock.png",
+    "48": "padlock.png",
+    "128": "padlock.png"
+  }
+}
