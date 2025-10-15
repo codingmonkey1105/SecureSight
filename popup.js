@@ -2,6 +2,14 @@ const scanButton = document.getElementById("scanButton");
 const tableEl = document.getElementById("resultTable");
 const domainAgeEl = document.getElementById("domainAgeResult");
 
+// Add SSL result element
+let sslEl = document.getElementById("sslResult");
+if (!sslEl) {
+  sslEl = document.createElement("p");
+  sslEl.id = "sslResult";
+  domainAgeEl.insertAdjacentElement("afterend", sslEl);
+}
+
 // Smart icon selector with safe/alert/unknown states
 function getIcon(status, unknown = false) {
   if (unknown) return "⚠️";
@@ -14,7 +22,6 @@ function formatPercent(p) {
   return `${Math.round(p)}%`;
 }
 
-// Render the main scan table
 function renderTable(scan) {
   if (!scan || !scan.suspiciousSummary) {
     tableEl.innerHTML =
@@ -25,10 +32,8 @@ function renderTable(scan) {
   const s = scan.suspiciousSummary;
   const f = scan.favicon || {};
   const r = scan.resourceAnalysis || {};
-  const c = scan.contentIntegrity || {}; // New field
-  const ss = scan.suspiciousScripts || {}; // New field
 
-  const faviconKnown = f.matchedName ? true : f.sha256 ? false : null; // null = unknown
+  const faviconKnown = f.matchedName ? true : f.sha256 ? false : null;
   const externalSafe =
     r.externalPercent !== undefined ? r.externalPercent < 50 : null;
 
@@ -76,24 +81,6 @@ function renderTable(scan) {
         ? `Matched: ${f.matchedName}`
         : "Unknown / not in whitelist",
     ],
-    [
-      "Content Integrity",
-      getIcon(c.integrityOk, c.integrityOk === null),
-      c.integrityOk === null
-        ? "Not checked"
-        : c.integrityOk
-        ? "Title, H1, and URL consistent"
-        : "Mismatch detected",
-    ],
-    [
-      "Suspicious Scripts",
-      getIcon(!ss.hasSuspicious, ss.hasSuspicious === null),
-      ss.hasSuspicious === null
-        ? "Not checked"
-        : ss.hasSuspicious
-        ? "External scripts from unknown domains detected"
-        : "No suspicious scripts",
-    ],
   ];
 
   tableEl.innerHTML = rows
@@ -104,7 +91,7 @@ function renderTable(scan) {
     .join("");
 }
 
-// Render domain age
+// WHOIS / Domain age section
 function renderDomainAge(createdDate) {
   if (!createdDate) {
     domainAgeEl.textContent = "Domain age: Unknown / WHOIS unavailable.";
@@ -119,50 +106,125 @@ function renderDomainAge(createdDate) {
     domainAgeEl.style.color = "red";
   } else {
     domainAgeEl.textContent = `✅ Domain age: ${diffDays} days`;
-    domainAgeEl.style.color = "white";
+    domainAgeEl.style.color = "green";
   }
 }
 
-// Scan button click → inject content.js into current tab
+// SSL Check Renderer - IMPROVED
+function renderSSLInfo(info) {
+  console.log("Rendering SSL info:", info);
+  
+  if (!info) {
+    sslEl.textContent = "SSL/TLS: Checking...";
+    sslEl.style.color = "grey";
+    return;
+  }
+
+  // Check for errors
+  if (info.error) {
+    sslEl.textContent = `⚠️ SSL/TLS: ${info.error}`;
+    sslEl.style.color = "orange";
+    return;
+  }
+
+  // Check if valid is null (unknown)
+  if (info.valid === null || info.valid === undefined) {
+    sslEl.textContent = `⚠️ SSL/TLS: Unable to verify certificate. ${info.issuer || ""}`;
+    sslEl.style.color = "grey";
+    return;
+  }
+
+  // Invalid certificate
+  if (info.valid === false) {
+    sslEl.textContent = `❌ SSL/TLS: Invalid or expired certificate. Issuer: ${info.issuer || "Unknown"}`;
+    sslEl.style.color = "red";
+    return;
+  }
+
+  // Valid certificate
+  const validTillDate = info.validTill ? new Date(info.validTill).toLocaleDateString() : "Unknown";
+  const issuer = info.issuer || "Unknown";
+  const grade = info.grade && info.grade !== "N/A" ? ` (Grade: ${info.grade})` : "";
+  
+  sslEl.textContent = `✅ SSL/TLS: Valid until ${validTillDate}${grade} - Issuer: ${issuer}`;
+  sslEl.style.color = "green";
+}
+
+// Inject scan
 scanButton.addEventListener("click", async () => {
   tableEl.innerHTML =
     "<tr><td colspan='2' style='text-align:center;'>Running scan...</td></tr>";
-
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
-  // Listener for scan results
-  const onMessage = (msg) => {
-    if (msg.type === "scan_complete") {
-      renderTable(msg.results);
-      chrome.runtime.onMessage.removeListener(onMessage);
-    }
-  };
-  chrome.runtime.onMessage.addListener(onMessage);
-
-  // Inject content script for scanning
   await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     files: ["content.js"],
   });
 
-  // Fallback: if message fails, check stored results after 1 sec
+  chrome.runtime.onMessage.addListener(function onMsg(msg) {
+    if (msg.type === "scan_complete") {
+      renderTable(msg.results);
+      chrome.runtime.onMessage.removeListener(onMsg);
+    }
+  });
+
   setTimeout(async () => {
     const stored = await chrome.storage.local.get(["lastScan"]);
     if (stored.lastScan) renderTable(stored.lastScan);
   }, 1000);
 });
 
-// On popup open → show last scan + domain age
+// On popup open → load last results + domain age + SSL check
 (async function init() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const stored = await chrome.storage.local.get(["lastScan"]);
   if (stored.lastScan) renderTable(stored.lastScan);
 
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.url) {
-    const domain = new URL(tab.url).hostname;
-    chrome.runtime.sendMessage({ type: "whois_lookup", domain }, (resp) =>
-      renderDomainAge(resp?.createdDate)
-    );
+    try {
+      const url = new URL(tab.url);
+      const domain = url.hostname;
+      
+      console.log("Checking domain:", domain);
+
+      // Show loading state
+      domainAgeEl.textContent = "Domain age: Checking...";
+      domainAgeEl.style.color = "grey";
+      sslEl.textContent = "SSL/TLS: Checking...";
+      sslEl.style.color = "grey";
+
+      // WHOIS lookup
+      chrome.runtime.sendMessage(
+        { type: "whois_lookup", domain }, 
+        (resp) => {
+          console.log("WHOIS response:", resp);
+          if (chrome.runtime.lastError) {
+            console.error("WHOIS error:", chrome.runtime.lastError);
+            renderDomainAge(null);
+          } else {
+            renderDomainAge(resp?.createdDate);
+          }
+        }
+      );
+
+      // SSL check with better error handling
+      chrome.runtime.sendMessage(
+        { type: "ssl_check", domain }, 
+        (resp) => {
+          console.log("SSL response:", resp);
+          if (chrome.runtime.lastError) {
+            console.error("SSL error:", chrome.runtime.lastError);
+            renderSSLInfo({ error: "Failed to check SSL" });
+          } else {
+            renderSSLInfo(resp);
+          }
+        }
+      );
+    } catch (err) {
+      console.error("Error in init:", err);
+      domainAgeEl.textContent = "Domain age: Error parsing URL";
+      sslEl.textContent = "SSL/TLS: Error parsing URL";
+    }
   }
 })();

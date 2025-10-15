@@ -212,3 +212,4 @@ if (window.__secureSightInjected) {
     console.log("SecureSight scan results:", results);
   })();
 }
+
