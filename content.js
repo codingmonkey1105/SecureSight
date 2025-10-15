@@ -3,86 +3,189 @@ if (window.__secureSightInjected) {
   console.log("SecureSight: content script already injected.");
 } else {
   window.__secureSightInjected = true;
+  console.log("SecureSight content script injected.");
 
-  console.log("content.js injected successfully!");
+  (async function runChecks() {
+    const results = {
+      url: window.location.href,
+      hostname: window.location.hostname,
+      isHttps: window.location.protocol === "https:",
+      suspiciousSubdomainCount: false,
+      containsCyrillic: false,
+      builtinTyposquatDetected: false,
+      titleMatchesDomain: true,
+      externalScripts: [],
+      resourceCounts: {
+        total: 0,
+        external: 0,
+        images: 0,
+        scripts: 0,
+        links: 0,
+      },
+      favicon: { url: null, sha256: null, matchedName: null },
+      timestamp: new Date().toISOString(),
+    };
 
-  (async function() {
-    console.log("---- Running Basic Phishing Checks ----");
+    try {
+      // 1. URL checks
+      const url = window.location.href;
+      const hostname = window.location.hostname;
+      if ((url.match(/\./g) || []).length > 3)
+        results.suspiciousSubdomainCount = true;
+      if (/[а-яА-Я]/.test(url)) results.containsCyrillic = true;
+      const builtinPattern = /g00gle|paypa1|faceb00k/i;
+      results.builtinTyposquatDetected = builtinPattern.test(url);
 
-    // load patterns.json (optional). Put patterns.json at extension root.
-    // let patterns = [];
-    // try {
-    //   const url = chrome.runtime.getURL("patterns.json");
-    //   const resp = await fetch(url);
-    //   if (resp.ok) patterns = await resp.json();
-    // } catch (e) {
-    //   // no patterns.json or failed to load
-    //   console.warn("SecureSight: no external patterns loaded.", e);
-    // }
+      // 2. Title vs domain
+      const title = (document.title || "").toLowerCase();
+      const parts = hostname.split(".");
+      const mainWord = parts.length > 1 ? parts[parts.length - 2] : parts[0];
+      if (mainWord && !title.includes(mainWord))
+        results.titleMatchesDomain = false;
 
-    // 1. HTTPS check
-    if (window.location.protocol !== "https:") {
-      console.log("Site is not using HTTPS.");
-    } else {
-      console.log("Site uses HTTPS.");
-    }
+      // 3. External scripts & script count
+      const scripts = [...document.querySelectorAll("script[src]")];
+      results.resourceCounts.scripts = scripts.length;
+      scripts.forEach((s) => {
+        try {
+          const src = s.src;
+          const srcHostname = new URL(src, window.location.origin).hostname;
+          if (srcHostname && srcHostname !== hostname) {
+            results.externalScripts.push(src);
+            results.resourceCounts.external++;
+          }
+        } catch (e) {
+          // ignore malformed src
+        }
+      });
 
-    // 2. URL checks
-    const url = window.location.href;
+      // 4. Images / links counts & external detection
+      const imgs = [...document.querySelectorAll("img[src]")];
+      const links = [...document.querySelectorAll("link[href]")];
+      results.resourceCounts.images = imgs.length;
+      results.resourceCounts.links = links.length;
 
-    if ((url.match(/\./g) || []).length > 3) {
-      console.log("Suspicious: Too many subdomains in URL.");
-    }
+      // Count external for images
+      imgs.forEach((i) => {
+        try {
+          const srcHostname = new URL(i.src, window.location.origin).hostname;
+          if (srcHostname && srcHostname !== hostname)
+            results.resourceCounts.external++;
+        } catch (e) {}
+      });
 
-    if (/[а-яА-Я]/.test(url)) {
-      console.log("Suspicious: URL contains unusual characters (Cyrillic).");
-    }
+      // Count external for link[href] (typically css/icons)
+      links.forEach((l) => {
+        if (!l.href) return;
+        try {
+          const hrefHostname = new URL(l.href, window.location.origin).hostname;
+          if (hrefHostname && hrefHostname !== hostname)
+            results.resourceCounts.external++;
+        } catch (e) {}
+      });
 
-    // built-in quick patterns + external patterns from patterns.json
-    const builtinPattern = /g00gle|paypa1|faceb00k/i;
-    if (builtinPattern.test(url)) {
-      console.log("Possible typosquatting detected (builtin pattern).");
-    }
+      // Total resource count
+      results.resourceCounts.total =
+        results.resourceCounts.images +
+        results.resourceCounts.scripts +
+        results.resourceCounts.links;
 
-    // try {
-    //   if (Array.isArray(patterns) && patterns.length) {
-    //     for (const p of patterns) {
-    //       // each entry in patterns.json can be a string or regex-string, e.g. "paypa1"
-    //       const re = new RegExp(p, "i");
-    //       if (re.test(url)) {
-    //         console.log(`Possible typosquatting detected (patterns.json): ${p}`);
-    //         break;
-    //       }
-    //     }
-    //   }
-    // } catch (e) {
-    //   console.warn("SecureSight: patterns check failed", e);
-    // }
+      // Compute >50% external flag (store as a helper field)
+      results.resourceAnalysis = {
+        externalPercent: results.resourceCounts.total
+          ? (results.resourceCounts.external / results.resourceCounts.total) *
+            100
+          : 0,
+        majorityExternal: results.resourceCounts.total
+          ? results.resourceCounts.external / results.resourceCounts.total > 0.5
+          : false,
+      };
 
-    // 3. Title vs domain
-    const title = (document.title || "").toLowerCase();
-    const domain = (window.location.hostname || "").toLowerCase();
-    const parts = domain.split(".");
-    const mainWord = parts.length > 1 ? parts[parts.length - 2] : parts[0];
-
-    if (mainWord && !title.includes(mainWord)) {
-      console.log("Title does not match domain name closely.");
-    } else {
-      console.log("Title seems consistent with domain.");
-    }
-
-    // 4. External scripts
-    const scripts = [...document.querySelectorAll("script[src]")];
-    scripts.forEach(s => {
-      if (!s.src.includes(window.location.hostname)) {
-        console.log(` External script detected: ${s.src}`);
+      // 5. Favicon extraction + hashing
+      async function fetchAsArrayBuffer(url) {
+        const resp = await fetch(url, { mode: "cors" });
+        if (!resp.ok) throw new Error("Fetch failed: " + resp.status);
+        return await resp.arrayBuffer();
       }
-    });
 
-    if (scripts.length === 0) {
-      console.log("No external scripts found.");
+      function toHex(buffer) {
+        const bytes = new Uint8Array(buffer);
+        return Array.from(bytes)
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+      }
+
+      async function computeSha256(arrayBuffer) {
+        const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+        return toHex(hashBuffer);
+      }
+
+      // try to find favicon
+      let faviconUrl = null;
+      const iconEl = document.querySelector("link[rel~='icon']");
+      const appleTouch = document.querySelector("link[rel='apple-touch-icon']");
+      if (iconEl && iconEl.href)
+        faviconUrl = new URL(iconEl.href, window.location.origin).href;
+      else if (appleTouch && appleTouch.href)
+        faviconUrl = new URL(appleTouch.href, window.location.origin).href;
+      else {
+        // fallback to /favicon.ico
+        faviconUrl = `${window.location.origin}/favicon.ico`;
+      }
+
+      results.favicon.url = faviconUrl;
+
+      // Attempt to fetch and hash favicon (may fail due to CORS on some sites)
+      try {
+        const arr = await fetchAsArrayBuffer(faviconUrl);
+        const sha = await computeSha256(arr);
+        results.favicon.sha256 = sha;
+      } catch (err) {
+        console.warn("SecureSight: favicon fetch/hash failed:", err);
+        results.favicon.sha256 = null;
+      }
+
+      // Attempt to match against built-in hash whitelist (we'll store known hashes in extension storage or inline map)
+      // We'll query chrome.storage.local for a mapping { "<sha256>": "Name" }
+      const stored = await new Promise((resolve) =>
+        chrome.storage.local.get(["faviconHashWhitelist"], resolve)
+      );
+      const whitelist = (stored && stored.faviconHashWhitelist) || {}; // object map sha -> label
+
+      if (results.favicon.sha256 && whitelist[results.favicon.sha256]) {
+        results.favicon.matchedName = whitelist[results.favicon.sha256];
+      } else {
+        results.favicon.matchedName = null;
+      }
+
+      // 6. Compose a summary flag for suspiciousness from these metrics
+      results.suspiciousSummary = {
+        nonHttps: !results.isHttps,
+        manySubdomains: results.suspiciousSubdomainCount,
+        cyrillicInUrl: results.containsCyrillic,
+        typosquat: results.builtinTyposquatDetected,
+        titleMismatch: !results.titleMatchesDomain,
+        externalDominant: results.resourceAnalysis.majorityExternal,
+        faviconMismatch: results.favicon.sha256 && !results.favicon.matchedName, // favicon exists but not matched to known brand hash
+      };
+    } catch (err) {
+      console.error("SecureSight content check failed:", err);
+      results.error = String(err);
     }
 
-    console.log("---- Checks Completed ----");
+    // Save results to storage so popup can read immediately
+    try {
+      await new Promise((resolve) =>
+        chrome.storage.local.set({ lastScan: results }, resolve)
+      );
+    } catch (err) {
+      console.warn("SecureSight: failed to store results:", err);
+    }
+
+    // Also notify runtime listeners (popup)
+    chrome.runtime.sendMessage({ type: "scan_complete", results });
+
+    // Additionally log to console (for debugging / demo)
+    console.log("SecureSight scan results:", results);
   })();
 }

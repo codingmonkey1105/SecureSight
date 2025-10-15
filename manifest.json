@@ -4,6 +4,11 @@
   "version": "1.0",
   "description": "Detects suspicious websites with basic security checks.",
   "permissions": ["tabs", "activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*",
+    "https://www.whoisxmlapi.com/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
