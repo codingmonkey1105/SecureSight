@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SecureSight Demo Website — Test</title>
+    <link rel="icon" href="https://example.com/favicon.ico" />
+    <!-- keep external libs to trigger external resource detection -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+    <style>
+      /*
+      Muted SecureSight demo styling
+      - Uses the extension palette (deep purple + orange)
+      - Intentionally dull / desaturated so the extension popup stands out
+    */
+
+      :root {
+        --bg-deep: #1b0b3a; /* extension deep purple */
+        --panel: #28144f; /* panel darker */
+        --muted-text: #cfcfcf; /* muted text */
+        --accent: #ff7b00; /* extension accent (orange) */
+        --muted-accent: rgba(
+          255,
+          123,
+          0,
+          0.18
+        ); /* soft accent for backgrounds */
+        --card-bg: rgba(255, 255, 255, 0.03);
+        --box-border: rgba(255, 255, 255, 0.04);
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        background: linear-gradient(180deg, var(--bg-deep) 0%, #0f0720 100%);
+        color: var(--muted-text);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      .wrap {
+        max-width: 980px;
+        margin: 28px auto;
+        padding: 22px;
+        box-sizing: border-box;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.01),
+          rgba(255, 255, 255, 0)
+        );
+        border-radius: 12px;
+        border: 1px solid var(--box-border);
+        box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(2px) saturate(0.85);
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      /* subtle extension-brand badge (non-interactive) so page shows the extension identity */
+      .brand {
+        width: 56px;
+        height: 56px;
+        border-radius: 10px;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 123, 0, 0.14),
+          rgba(255, 123, 0, 0.08)
+        );
+        border: 1px solid rgba(255, 123, 0, 0.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 700;
+        font-size: 14px;
+        filter: grayscale(60%) brightness(0.9); /* intentionally muted */
+      }
+
+      h1 {
+        font-size: 20px;
+        margin: 0;
+        color: #f1eff5; /* slightly brighter title */
+        letter-spacing: 0.2px;
+      }
+
+      .notice {
+        color: #d9a26b;
+        font-weight: 600;
+        margin-top: 6px;
+        opacity: 0.95;
+        font-size: 13px;
+      }
+
+      .box {
+        padding: 12px;
+        border-radius: 8px;
+        background: var(--card-bg);
+        border: 1px solid var(--box-border);
+        margin-bottom: 14px;
+        color: var(--muted-text);
+        transition: transform 0.12s ease;
+      }
+
+      .box h2,
+      .box h3 {
+        margin: 0 0 10px 0;
+        color: #efe9f6;
+        font-weight: 600;
+        font-size: 15px;
+      }
+
+      .box p,
+      .box label,
+      .box a {
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 13px;
+        line-height: 1.36;
+      }
+
+      /* desaturate external images so page looks dull */
+      img {
+        display: inline-block;
+        margin: 6px 6px 6px 0;
+        border-radius: 6px;
+        filter: grayscale(90%) brightness(0.86);
+        border: 1px solid rgba(255, 255, 255, 0.03);
+      }
+
+      /* iframes also muted */
+      iframe {
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.03);
+        filter: grayscale(90%) brightness(0.82);
+        background: rgba(0, 0, 0, 0.12);
+      }
+
+      /* forms and inputs - low contrast */
+      input[type="email"],
+      input[type="password"] {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        background: rgba(255, 255, 255, 0.02);
+        color: #f6f4f8;
+        margin-top: 6px;
+        box-sizing: border-box;
+      }
+
+      button[type="submit"] {
+        background: linear-gradient(180deg, var(--accent), #d36600);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        margin-top: 10px;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+        opacity: 0.95; /* slightly muted */
+      }
+
+      /* links muted but accented on hover */
+      a {
+        color: rgba(255, 123, 0, 0.88);
+        text-decoration: none;
+        border-bottom: 1px dashed rgba(255, 123, 0, 0.08);
+      }
+      a:hover {
+        color: #ffd2a6;
+        text-decoration: underline;
+      }
+
+      /* small visual hint near fold to keep attention away from page content */
+      .muted-footer {
+        margin-top: 18px;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.28);
+        text-align: center;
+      }
+
+      /* make content less "busy" visually on focus */
+      .dim-layer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(
+          0deg,
+          rgba(27, 11, 58, 0.2),
+          rgba(27, 11, 58, 0.12)
+        );
+        border-radius: 12px;
+      }
+
+      /* small responsive */
+      @media (max-width: 420px) {
+        .wrap {
+          margin: 14px;
+          padding: 12px;
+        }
+        h1 {
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap" role="main">
+      <header>
+        <div class="brand">SS</div>
+        <div>
+          <h1>SecureSight Demo Website</h1>
+          <div class="notice">
+            This test page intentionally contains many suspicious patterns for
+            SecureSight testing.
+          </div>
+        </div>
+      </header>
+
+      <section class="box" aria-labelledby="loginTitle">
+        <h2 id="loginTitle">Login to receive your prize</h2>
+        <form id="loginForm" action="http://example.com/steal" method="post">
+          <label>
+            Email:
+            <input type="email" name="email" value="user@example.com" />
+          </label>
+          <br /><br />
+          <label>
+            Password:
+            <input type="password" name="password" />
+          </label>
+          <br /><br />
+          <input type="hidden" name="not_a_csrf_token" value="12345" />
+          <button type="submit">Sign in</button>
+        </form>
+      </section>
+
+      <section class="box">
+        <h3>Gallery</h3>
+        <img src="https://picsum.photos/seed/1/200/120" alt="external1" />
+        <img src="https://picsum.photos/seed/2/200/120" alt="external2" />
+        <img src="https://picsum.photos/seed/3/200/120" alt="external3" />
+        <img src="https://picsum.photos/seed/4/200/120" alt="external4" />
+        <img src="https://picsum.photos/seed/5/200/120" alt="external5" />
+      </section>
+
+      <section class="box">
+        <h3>Embedded widgets</h3>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <iframe
+            src="https://example.com/iframe1"
+            width="160"
+            height="100"
+          ></iframe>
+          <iframe
+            src="https://example.com/iframe2"
+            width="160"
+            height="100"
+          ></iframe>
+          <iframe
+            src="https://example.com/iframe3"
+            width="160"
+            height="100"
+          ></iframe>
+          <iframe
+            src="https://example.com/iframe4"
+            width="160"
+            height="100"
+          ></iframe>
+          <iframe
+            src="https://example.com/iframe5"
+            width="160"
+            height="100"
+          ></iframe>
+          <iframe
+            src="https://example.com/iframe6"
+            width="160"
+            height="100"
+          ></iframe>
+        </div>
+      </section>
+
+      <section class="box">
+        <h3>Links</h3>
+        <p>
+          <a href="https://malicious.example.com/login"
+            >Click here to update your account</a
+          >
+        </p>
+        <p><a href="https://paypa1.example.com/secure">PayPal fake</a></p>
+        <p><a href="https://facebook-login.example.com">Facebook fake</a></p>
+      </section>
+
+      <section class="box">
+        <p>
+          We partner with g00gle and paypa1 to provide secure payment. Visit
+          g00gle-secure.example for details.
+        </p>
+      </section>
+
+      <footer class="muted-footer">
+        <p>
+          Tip: This page is intentionally muted so your extension popup will
+          stand out when opened.
+        </p>
+        <p>Test path: <a href="/тест.html">/тест.html</a></p>
+      </footer>
+
+      <div class="dim-layer" aria-hidden="true"></div>
+    </div>
+
+    <!-- Suspicious inline scripts (tampering heuristics) -->
+    <script>
+      (function () {
+        var s = "console.log('inline-obfuscated-script-run');";
+        var encoded = btoa(s);
+        (function (x) {
+          eval(atob(x));
+        })(encoded);
+      })();
+    </script>
+
+    <script>
+      (function () {
+        var x = "";
+        for (var i = 0; i < 1000; i++) {
+          x += String.fromCharCode(97 + (i % 26));
+        }
+        try {
+          document.write("<!-- filler -->");
+        } catch (e) {}
+      })();
+    </script>
+  </body>
+</html>

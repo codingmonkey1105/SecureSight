@@ -14,6 +14,7 @@ function formatPercent(p) {
   return `${Math.round(p)}%`;
 }
 
+// Render the main scan table
 function renderTable(scan) {
   if (!scan || !scan.suspiciousSummary) {
     tableEl.innerHTML =
@@ -24,8 +25,9 @@ function renderTable(scan) {
   const s = scan.suspiciousSummary;
   const f = scan.favicon || {};
   const r = scan.resourceAnalysis || {};
+  const c = scan.contentIntegrity || {}; // New field
+  const ss = scan.suspiciousScripts || {}; // New field
 
-  // ✅ improved logic for complex fields
   const faviconKnown = f.matchedName ? true : f.sha256 ? false : null; // null = unknown
   const externalSafe =
     r.externalPercent !== undefined ? r.externalPercent < 50 : null;
@@ -74,6 +76,24 @@ function renderTable(scan) {
         ? `Matched: ${f.matchedName}`
         : "Unknown / not in whitelist",
     ],
+    [
+      "Content Integrity",
+      getIcon(c.integrityOk, c.integrityOk === null),
+      c.integrityOk === null
+        ? "Not checked"
+        : c.integrityOk
+        ? "Title, H1, and URL consistent"
+        : "Mismatch detected",
+    ],
+    [
+      "Suspicious Scripts",
+      getIcon(!ss.hasSuspicious, ss.hasSuspicious === null),
+      ss.hasSuspicious === null
+        ? "Not checked"
+        : ss.hasSuspicious
+        ? "External scripts from unknown domains detected"
+        : "No suspicious scripts",
+    ],
   ];
 
   tableEl.innerHTML = rows
@@ -84,7 +104,7 @@ function renderTable(scan) {
     .join("");
 }
 
-// WHOIS / Domain age section
+// Render domain age
 function renderDomainAge(createdDate) {
   if (!createdDate) {
     domainAgeEl.textContent = "Domain age: Unknown / WHOIS unavailable.";
@@ -99,41 +119,46 @@ function renderDomainAge(createdDate) {
     domainAgeEl.style.color = "red";
   } else {
     domainAgeEl.textContent = `✅ Domain age: ${diffDays} days`;
-    domainAgeEl.style.color = "green";
+    domainAgeEl.style.color = "white";
   }
 }
 
-// Inject scan
+// Scan button click → inject content.js into current tab
 scanButton.addEventListener("click", async () => {
   tableEl.innerHTML =
     "<tr><td colspan='2' style='text-align:center;'>Running scan...</td></tr>";
+
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
+  // Listener for scan results
+  const onMessage = (msg) => {
+    if (msg.type === "scan_complete") {
+      renderTable(msg.results);
+      chrome.runtime.onMessage.removeListener(onMessage);
+    }
+  };
+  chrome.runtime.onMessage.addListener(onMessage);
+
+  // Inject content script for scanning
   await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     files: ["content.js"],
   });
 
-  chrome.runtime.onMessage.addListener(function onMsg(msg) {
-    if (msg.type === "scan_complete") {
-      renderTable(msg.results);
-      chrome.runtime.onMessage.removeListener(onMsg);
-    }
-  });
-
+  // Fallback: if message fails, check stored results after 1 sec
   setTimeout(async () => {
     const stored = await chrome.storage.local.get(["lastScan"]);
     if (stored.lastScan) renderTable(stored.lastScan);
   }, 1000);
 });
 
-// On popup open → load last results + domain age
+// On popup open → show last scan + domain age
 (async function init() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const stored = await chrome.storage.local.get(["lastScan"]);
   if (stored.lastScan) renderTable(stored.lastScan);
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.url) {
     const domain = new URL(tab.url).hostname;
     chrome.runtime.sendMessage({ type: "whois_lookup", domain }, (resp) =>
