@@ -1,4 +1,3 @@
-
 // Runs once when the extension is installed
 chrome.runtime.onInstalled.addListener(() => {
   console.log("SecureSight extension installed.");
@@ -6,7 +5,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // WHOIS Lookup Handler (using WhoisXML API key)
 async function fetchWhois(domain) {
-  const apiKey = "at_cfNYAdPZ3FA4oYpMgmcs8RK1ZvC9O"; // Replace with your actual WhoisXML API key
+  const apiKey = "at_cfNYAdPZ3FA4oYpMgmcs8RK1ZvC9O";
   const url = `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${apiKey}&domainName=${domain}&outputFormat=JSON`;
 
   try {
@@ -29,53 +28,55 @@ async function fetchWhois(domain) {
 
 // Threat intelligence placeholder
 async function threatIntelLookup(domain) {
-  // Replace with actual threat intel API logic
+  // Need to Replace
   return { flagged: null, source: null, details: null };
 }
 
 // SSL/TLS Certificate Check
 async function checkSSLCertificate(domain) {
   console.log("=== Starting SSL check for:", domain);
-  
+
   // Clean the domain
-  const cleanDomain = domain.replace(/^www\./, '').split(':')[0];
+  const cleanDomain = domain.replace(/^www\./, "").split(":")[0];
   console.log("Clean domain:", cleanDomain);
-  
+
   try {
     // Method 1: Try crt.sh (most reliable for certificate info)
-    const url = `https://crt.sh/?q=${encodeURIComponent(cleanDomain)}&output=json`;
+    const url = `https://crt.sh/?q=${encodeURIComponent(
+      cleanDomain
+    )}&output=json`;
     console.log("Fetching:", url);
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
+
     const response = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
-    
+
     console.log("Response status:", response.status);
     console.log("Response OK:", response.ok);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    
+
     const certificates = await response.json();
     console.log("Certificates found:", certificates.length);
-    
+
     if (!Array.isArray(certificates) || certificates.length === 0) {
       // Fallback to connectivity test
       return await checkSSLViaConnectivity(cleanDomain);
     }
-    
-    // Sort by entry timestamp (most recent first)
+
+    // Sort by entry timestamp
     const sortedCerts = certificates.sort((a, b) => {
       const dateA = new Date(a.entry_timestamp);
       const dateB = new Date(b.entry_timestamp);
       return dateB - dateA;
     });
-    
+
     console.log("Most recent cert ID:", sortedCerts[0].id);
-    
+
     // Find the first certificate with valid dates
     let validCert = null;
     for (const cert of sortedCerts) {
@@ -84,25 +85,25 @@ async function checkSSLCertificate(domain) {
         break;
       }
     }
-    
+
     if (!validCert) {
       console.log("No certificate with valid dates found");
       return await checkSSLViaConnectivity(cleanDomain);
     }
-    
+
     // Parse dates
     const notBefore = new Date(validCert.not_before);
     const notAfter = new Date(validCert.not_after);
     const now = new Date();
-    
+
     console.log("Not Before:", notBefore);
     console.log("Not After:", notAfter);
     console.log("Now:", now);
-    
+
     // Check if certificate is currently valid
     const isValid = now >= notBefore && now <= notAfter;
     console.log("Certificate valid:", isValid);
-    
+
     // Extract issuer organization
     let issuer = "Unknown";
     if (validCert.issuer_name) {
@@ -121,23 +122,22 @@ async function checkSSLCertificate(domain) {
         }
       }
     }
-    
+
     const result = {
       valid: isValid,
       grade: "N/A",
       issuer: issuer,
       validFrom: notBefore.toISOString(),
       validTill: notAfter.toISOString(),
-      commonName: validCert.common_name || validCert.name_value
+      commonName: validCert.common_name || validCert.name_value,
     };
-    
+
     console.log("✓ SSL check result:", result);
     return result;
-    
   } catch (error) {
     console.error("crt.sh failed:", error);
     console.log("Falling back to connectivity test...");
-    
+
     // Fallback: Test HTTPS connectivity
     return await checkSSLViaConnectivity(cleanDomain);
   }
@@ -147,39 +147,38 @@ async function checkSSLCertificate(domain) {
 async function checkSSLViaConnectivity(domain) {
   try {
     console.log("Testing HTTPS connectivity for:", domain);
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
+
     // Try to connect via HTTPS
     const response = await fetch(`https://${domain}/favicon.ico`, {
-      method: 'HEAD',
-      mode: 'no-cors',
-      signal: controller.signal
+      method: "HEAD",
+      mode: "no-cors",
+      signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    
+
     console.log("✓ HTTPS connection successful");
-    
+
     return {
       valid: true,
       grade: "N/A",
       issuer: "HTTPS Connection Verified",
       validFrom: null,
-      validTill: null
+      validTill: null,
     };
-    
   } catch (error) {
     console.error("HTTPS connectivity test failed:", error);
-    
+
     return {
       valid: false,
       grade: "N/A",
       issuer: "HTTPS Connection Failed",
       validFrom: null,
       validTill: null,
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -196,16 +195,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "threat_lookup") {
     threatIntelLookup(msg.domain)
       .then((result) => sendResponse(result))
-      .catch(() => sendResponse({ flagged: null, source: null, details: null }));
+      .catch(() =>
+        sendResponse({ flagged: null, source: null, details: null })
+      );
     return true;
   }
 
   if (msg.type === "ssl_check") {
-    console.log("📩 Received SSL check request for:", msg.domain);
-    
+    console.log("Received SSL check request for:", msg.domain);
+
     checkSSLCertificate(msg.domain)
       .then((result) => {
-        console.log("📤 Sending SSL result:", result);
+        console.log("Sending SSL result:", result);
         sendResponse(result);
       })
       .catch((error) => {
@@ -216,10 +217,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           issuer: "Check failed",
           validFrom: null,
           validTill: null,
-          error: error.message
+          error: error.message,
         });
       });
-    
+
     return true;
   }
 });

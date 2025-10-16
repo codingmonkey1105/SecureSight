@@ -4,7 +4,6 @@
     <meta charset="utf-8" />
     <title>SecureSight Demo Website — Test</title>
     <link rel="icon" href="https://example.com/favicon.ico" />
-    <!-- keep external libs to trigger external resource detection -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
@@ -13,23 +12,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 
     <style>
-      /*
-      Muted SecureSight demo styling
-      - Uses the extension palette (deep purple + orange)
-      - Intentionally dull / desaturated so the extension popup stands out
-    */
-
       :root {
-        --bg-deep: #1b0b3a; /* extension deep purple */
-        --panel: #28144f; /* panel darker */
-        --muted-text: #cfcfcf; /* muted text */
-        --accent: #ff7b00; /* extension accent (orange) */
-        --muted-accent: rgba(
-          255,
-          123,
-          0,
-          0.18
-        ); /* soft accent for backgrounds */
+        --bg-deep: #1b0b3a;
+        --panel: #28144f;
+        --muted-text: #cfcfcf;
+        --accent: #ff7b00;
+        --muted-accent: rgba(255, 123, 0, 0.18);
         --card-bg: rgba(255, 255, 255, 0.03);
         --box-border: rgba(255, 255, 255, 0.04);
       }
@@ -68,7 +56,6 @@
         margin-bottom: 18px;
       }
 
-      /* subtle extension-brand badge (non-interactive) so page shows the extension identity */
       .brand {
         width: 56px;
         height: 56px;
@@ -85,13 +72,13 @@
         color: #fff;
         font-weight: 700;
         font-size: 14px;
-        filter: grayscale(60%) brightness(0.9); /* intentionally muted */
+        filter: grayscale(60%) brightness(0.9);
       }
 
       h1 {
         font-size: 20px;
         margin: 0;
-        color: #f1eff5; /* slightly brighter title */
+        color: #f1eff5;
         letter-spacing: 0.2px;
       }
 
@@ -129,7 +116,6 @@
         line-height: 1.36;
       }
 
-      /* desaturate external images so page looks dull */
       img {
         display: inline-block;
         margin: 6px 6px 6px 0;
@@ -138,7 +124,6 @@
         border: 1px solid rgba(255, 255, 255, 0.03);
       }
 
-      /* iframes also muted */
       iframe {
         border-radius: 6px;
         border: 1px solid rgba(255, 255, 255, 0.03);
@@ -146,7 +131,6 @@
         background: rgba(0, 0, 0, 0.12);
       }
 
-      /* forms and inputs - low contrast */
       input[type="email"],
       input[type="password"] {
         width: 100%;
@@ -169,10 +153,9 @@
         font-weight: 600;
         margin-top: 10px;
         box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
-        opacity: 0.95; /* slightly muted */
+        opacity: 0.95;
       }
 
-      /* links muted but accented on hover */
       a {
         color: rgba(255, 123, 0, 0.88);
         text-decoration: none;
@@ -183,7 +166,6 @@
         text-decoration: underline;
       }
 
-      /* small visual hint near fold to keep attention away from page content */
       .muted-footer {
         margin-top: 18px;
         font-size: 12px;
@@ -191,7 +173,6 @@
         text-align: center;
       }
 
-      /* make content less "busy" visually on focus */
       .dim-layer {
         position: absolute;
         inset: 0;
@@ -203,19 +184,9 @@
         );
         border-radius: 12px;
       }
-
-      /* small responsive */
-      @media (max-width: 420px) {
-        .wrap {
-          margin: 14px;
-          padding: 12px;
-        }
-        h1 {
-          font-size: 18px;
-        }
-      }
     </style>
   </head>
+
   <body>
     <div class="wrap" role="main">
       <header>
@@ -321,7 +292,7 @@
       <div class="dim-layer" aria-hidden="true"></div>
     </div>
 
-    <!-- Suspicious inline scripts (tampering heuristics) -->
+    <!-- Suspicious inline scripts -->
     <script>
       (function () {
         var s = "console.log('inline-obfuscated-script-run');";
