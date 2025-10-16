@@ -26,19 +26,98 @@ if (window.__secureSightInjected) {
       timestamp: new Date().toISOString(),
       contentIntegrity: {},
       suspiciousSummary: {},
+      susScripts: { found: false, details: [] },
     };
 
-    // ---------------------
+    // Suspicious Scripts Detection (inline, external, dynamic)
+    function detectSuspiciousScripts() {
+      const susPatterns = [
+        /eval\s*\(/i,
+        /document\.write\s*\(/i,
+        /setTimeout\s*\(\s*['"`]/i,
+        /setInterval\s*\(\s*['"`]/i,
+        /atob\s*\(/i,
+        /btoa\s*\(/i,
+        /Function\s*\(/i,
+        /[\w$]\s*=\s*atob\s*\(/i,
+        /[\w$]\s*=\s*new\s+Function/i,
+      ];
+
+      let found = false;
+      let details = [];
+
+      // Scan all script tags
+      document.querySelectorAll("script").forEach((script) => {
+        const code = script.textContent || "";
+        susPatterns.forEach((pattern) => {
+          if (pattern.test(code)) {
+            found = true;
+            details.push({
+              pattern: pattern.toString(),
+              snippet: code.slice(0, 100),
+            });
+          }
+        });
+      });
+
+      // Scan the entire HTML as a fallback
+      const html = document.documentElement.innerHTML;
+      susPatterns.forEach((pattern) => {
+        if (pattern.test(html)) {
+          found = true;
+          details.push({
+            pattern: pattern.toString(),
+            snippet: html.match(pattern)[0],
+          });
+        }
+      });
+
+      return { found, details };
+    }
+
+    // MutationObserver for dynamically injected scripts
+    const dynamicScriptDetails = [];
+    const susPatterns = [
+      /eval\s*\(/i,
+      /document\.write\s*\(/i,
+      /setTimeout\s*\(\s*['"`]/i,
+      /setInterval\s*\(\s*['"`]/i,
+      /atob\s*\(/i,
+      /btoa\s*\(/i,
+      /Function\s*\(/i,
+      /[\w$]\s*=\s*atob\s*\(/i,
+      /[\w$]\s*=\s*new\s+Function/i,
+    ];
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.tagName === "SCRIPT") {
+            const code = node.textContent || "";
+            susPatterns.forEach((pattern) => {
+              if (pattern.test(code)) {
+                dynamicScriptDetails.push({
+                  pattern: pattern.toString(),
+                  snippet: code.slice(0, 100),
+                });
+              }
+            });
+          }
+        });
+      });
+    });
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+
     // Content Integrity Check
-    // ---------------------
     try {
       const hostname = results.hostname.toLowerCase();
       const title = (document.title || "").toLowerCase();
       const h1s = [...document.querySelectorAll("h1")].map((h) =>
         h.textContent.toLowerCase()
       );
-
-      const domainBrand = hostname.split(".")[hostname.split(".").length - 2]; // e.g., "google"
+      const domainBrand = hostname.split(".")[hostname.split(".").length - 2];
       const titleOk = title.includes(domainBrand);
       const h1Ok = h1s.every((h) => h.includes(domainBrand));
       const urlOk = window.location.href.toLowerCase().includes(domainBrand);
@@ -51,9 +130,7 @@ if (window.__secureSightInjected) {
       results.contentIntegrity = { integrityOk: null, details: null };
     }
 
-    // ---------------------
     // URL Checks
-    // ---------------------
     try {
       const url = results.url;
       const hostname = results.hostname;
@@ -74,9 +151,7 @@ if (window.__secureSightInjected) {
       console.warn("URL check failed:", err);
     }
 
-    // ---------------------
     // External scripts, images, links
-    // ---------------------
     try {
       const scripts = [...document.querySelectorAll("script[src]")];
       results.resourceCounts.scripts = scripts.length;
@@ -131,9 +206,7 @@ if (window.__secureSightInjected) {
       console.warn("Resource analysis failed:", err);
     }
 
-    // ---------------------
     // Favicon hash
-    // ---------------------
     try {
       async function fetchAsArrayBuffer(url) {
         const resp = await fetch(url, { mode: "cors" });
@@ -183,9 +256,7 @@ if (window.__secureSightInjected) {
       console.warn("Favicon hash failed:", err);
     }
 
-    // ---------------------
     // Suspicious summary
-    // ---------------------
     results.suspiciousSummary = {
       nonHttps: !results.isHttps,
       manySubdomains: results.suspiciousSubdomainCount,
@@ -197,9 +268,61 @@ if (window.__secureSightInjected) {
       contentIntegrityMismatch: results.contentIntegrity.integrityOk === false,
     };
 
-    // ---------------------
+    // Suspicious scripts (static and dynamic)
+    function detectSuspiciousScripts() {
+      const susPatterns = [
+        /eval\s*\(/i,
+        /document\.write\s*\(/i,
+        /setTimeout\s*\(\s*['"`]/i,
+        /setInterval\s*\(\s*['"`]/i,
+        /atob\s*\(/i,
+        /btoa\s*\(/i,
+        /Function\s*\(/i,
+        /[\w$]\s*=\s*atob\s*\(/i,
+        /[\w$]\s*=\s*new\s+Function/i,
+      ];
+
+      let found = false;
+      let details = [];
+
+      // Scan all script tags
+      document.querySelectorAll("script").forEach((script) => {
+        const code = script.textContent || "";
+        susPatterns.forEach((pattern) => {
+          if (pattern.test(code)) {
+            found = true;
+            details.push({
+              pattern: pattern.toString(),
+              snippet: code.slice(0, 100),
+            });
+          }
+        });
+      });
+
+      // Scan the entire HTML as a fallback
+      const html = document.documentElement.innerHTML;
+      susPatterns.forEach((pattern) => {
+        if (pattern.test(html)) {
+          found = true;
+          details.push({
+            pattern: pattern.toString(),
+            snippet: html.match(pattern)[0],
+          });
+        }
+      });
+
+      return { found, details };
+    }
+
+    // Listen for popup requests
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+      if (msg.type === "checkSusScripts") {
+        sendResponse(detectSuspiciousScripts());
+        return true;
+      }
+    });
+
     // Store results and notify popup
-    // ---------------------
     try {
       await new Promise((resolve) =>
         chrome.storage.local.set({ lastScan: results }, resolve)
@@ -212,4 +335,3 @@ if (window.__secureSightInjected) {
     console.log("SecureSight scan results:", results);
   })();
 }
-

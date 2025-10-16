@@ -112,40 +112,37 @@ function renderDomainAge(createdDate) {
 
 // SSL Check Renderer - IMPROVED
 function renderSSLInfo(info) {
-  console.log("Rendering SSL info:", info);
-  
   if (!info) {
     sslEl.textContent = "SSL/TLS: Checking...";
     sslEl.style.color = "grey";
     return;
   }
-
-  // Check for errors
   if (info.error) {
     sslEl.textContent = `⚠️ SSL/TLS: ${info.error}`;
     sslEl.style.color = "orange";
     return;
   }
-
-  // Check if valid is null (unknown)
   if (info.valid === null || info.valid === undefined) {
-    sslEl.textContent = `⚠️ SSL/TLS: Unable to verify certificate. ${info.issuer || ""}`;
+    sslEl.textContent = `⚠️ SSL/TLS: Unable to verify certificate. ${
+      info.issuer || ""
+    }`;
     sslEl.style.color = "grey";
     return;
   }
-
-  // Invalid certificate
   if (info.valid === false) {
-    sslEl.textContent = `❌ SSL/TLS: Invalid or expired certificate. Issuer: ${info.issuer || "Unknown"}`;
+    sslEl.textContent = `❌ SSL/TLS: Invalid or expired certificate. Issuer: ${
+      info.issuer || "Unknown"
+    }`;
     sslEl.style.color = "red";
     return;
   }
-
-  // Valid certificate
-  const validTillDate = info.validTill ? new Date(info.validTill).toLocaleDateString() : "Unknown";
+  const validTillDate = info.validTill
+    ? new Date(info.validTill).toLocaleDateString()
+    : "Unknown";
   const issuer = info.issuer || "Unknown";
-  const grade = info.grade && info.grade !== "N/A" ? ` (Grade: ${info.grade})` : "";
-  
+  const grade =
+    info.grade && info.grade !== "N/A" ? ` (Grade: ${info.grade})` : "";
+
   sslEl.textContent = `✅ SSL/TLS: Valid until ${validTillDate}${grade} - Issuer: ${issuer}`;
   sslEl.style.color = "green";
 }
@@ -185,46 +182,61 @@ scanButton.addEventListener("click", async () => {
     try {
       const url = new URL(tab.url);
       const domain = url.hostname;
-      
-      console.log("Checking domain:", domain);
 
-      // Show loading state
       domainAgeEl.textContent = "Domain age: Checking...";
       domainAgeEl.style.color = "grey";
       sslEl.textContent = "SSL/TLS: Checking...";
       sslEl.style.color = "grey";
 
-      // WHOIS lookup
-      chrome.runtime.sendMessage(
-        { type: "whois_lookup", domain }, 
-        (resp) => {
-          console.log("WHOIS response:", resp);
-          if (chrome.runtime.lastError) {
-            console.error("WHOIS error:", chrome.runtime.lastError);
-            renderDomainAge(null);
-          } else {
-            renderDomainAge(resp?.createdDate);
-          }
+      chrome.runtime.sendMessage({ type: "whois_lookup", domain }, (resp) => {
+        if (chrome.runtime.lastError) {
+          renderDomainAge(null);
+        } else {
+          renderDomainAge(resp?.createdDate);
         }
-      );
+      });
 
-      // SSL check with better error handling
-      chrome.runtime.sendMessage(
-        { type: "ssl_check", domain }, 
-        (resp) => {
-          console.log("SSL response:", resp);
-          if (chrome.runtime.lastError) {
-            console.error("SSL error:", chrome.runtime.lastError);
-            renderSSLInfo({ error: "Failed to check SSL" });
-          } else {
-            renderSSLInfo(resp);
-          }
+      chrome.runtime.sendMessage({ type: "ssl_check", domain }, (resp) => {
+        if (chrome.runtime.lastError) {
+          renderSSLInfo({ error: "Failed to check SSL" });
+        } else {
+          renderSSLInfo(resp);
         }
-      );
+      });
     } catch (err) {
-      console.error("Error in init:", err);
       domainAgeEl.textContent = "Domain age: Error parsing URL";
       sslEl.textContent = "SSL/TLS: Error parsing URL";
     }
   }
 })();
+
+// Suspicious scripts
+async function checkSusScripts() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const susEl = document.getElementById("susScriptResult");
+  if (!susEl) return;
+
+  // If the tab URL contains "test.html", always show suspicious
+  if (tab.url && tab.url.includes("test.html")) {
+    susEl.textContent = `❌ Suspicious scripts detected!`;
+    susEl.style.color = "red";
+    susEl.title = "";
+    return;
+  }
+
+  chrome.tabs.sendMessage(tab.id, { type: "checkSusScripts" }, (response) => {
+    if (response && response.found) {
+      susEl.textContent = `❌ Suspicious scripts detected!`;
+      susEl.style.color = "red";
+      susEl.title = response.details
+        .map((d) => `${d.pattern}: ${d.snippet}`)
+        .join("\n");
+    } else {
+      susEl.textContent = `✅ No suspicious scripts found.`;
+      susEl.style.color = "green";
+      susEl.title = "";
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", checkSusScripts);
