@@ -7,13 +7,7 @@
   "host_permissions": [
     "https://*/*",
     "http://*/*",
-    "https://www.whoisxmlapi.com/*",
-    "https://api.ssllabs.com/*",
-    "https://crt.sh/*",
-    "https://api.certspotter.com/*",
-    "https://ssl-checker.io/*",
-    "https://cloudflare-dns.com/*",
-    "https://transparencyreport.google.com/*"
+    "https://www.whoisxmlapi.com/*"
   ],
   "background": {
     "service_worker": "background.js"
