@@ -27,7 +27,145 @@ if (window.__secureSightInjected) {
       contentIntegrity: {},
       suspiciousSummary: {},
       susScripts: { found: false, details: [] },
+      suspiciousLinks: { found: false, count: 0, links: [] },
     };
+
+    // NEW: Scan all links for suspicious patterns
+    function scanLinksForThreats() {
+      const allLinks = document.querySelectorAll('a[href]');
+      const suspiciousLinks = [];
+      
+      const suspiciousPatterns = {
+        typosquatting: /g00gle|faceb00k|paypa1|amaz0n|netfl1x|micr0soft|app1e|tw1tter|inst4gram/i,
+        cyrillicHomoglyphs: /[а-яА-Я]/,
+        ipAddress: /https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/,
+        suspiciousTLD: /\.(tk|ml|ga|cf|gq|pw|cc|ws|info|biz|top|xyz|online|site|club)$/i,
+        excessiveSubdomains: /^https?:\/\/([a-z0-9-]+\.){4,}/i,
+        urlShorteners: /bit\.ly|tinyurl|goo\.gl|ow\.ly|t\.co|shorturl/i,
+        suspiciousKeywords: /login|verify|account|suspend|secure|update|confirm|bank|paypal|wallet|crypto/i,
+        dataURI: /^data:/i,
+        javascriptProtocol: /^javascript:/i,
+        homographAttack: /[ρ|о|а|е|у|і|х|с|р|т|ν|μ]/i, // Lookalike characters
+      };
+
+      allLinks.forEach(link => {
+        try {
+          const href = link.href;
+          const linkText = link.textContent.trim().toLowerCase();
+          const currentDomain = window.location.hostname;
+          
+          if (!href || href === '#' || href.startsWith('mailto:')) return;
+
+          const flags = [];
+          let riskScore = 0;
+
+          // Check for typosquatting
+          if (suspiciousPatterns.typosquatting.test(href)) {
+            flags.push('Typosquatting detected');
+            riskScore += 3;
+          }
+
+          // Check for Cyrillic characters
+          if (suspiciousPatterns.cyrillicHomoglyphs.test(href)) {
+            flags.push('Cyrillic/Unicode characters');
+            riskScore += 3;
+          }
+
+          // Check for IP addresses
+          if (suspiciousPatterns.ipAddress.test(href)) {
+            flags.push('Links to IP address');
+            riskScore += 2;
+          }
+
+          // Check for suspicious TLDs
+          if (suspiciousPatterns.suspiciousTLD.test(href)) {
+            flags.push('Suspicious domain extension');
+            riskScore += 2;
+          }
+
+          // Check for excessive subdomains
+          if (suspiciousPatterns.excessiveSubdomains.test(href)) {
+            flags.push('Too many subdomains');
+            riskScore += 2;
+          }
+
+          // Check for URL shorteners
+          if (suspiciousPatterns.urlShorteners.test(href)) {
+            flags.push('URL shortener');
+            riskScore += 1;
+          }
+
+          // Check for phishing keywords in URL + link text mismatch
+          if (suspiciousPatterns.suspiciousKeywords.test(href)) {
+            flags.push('Suspicious keywords');
+            riskScore += 2;
+          }
+
+          // Check for data URI or javascript protocol
+          if (suspiciousPatterns.dataURI.test(href) || suspiciousPatterns.javascriptProtocol.test(href)) {
+            flags.push('Dangerous protocol');
+            riskScore += 3;
+          }
+
+          // Check for homograph attacks
+          if (suspiciousPatterns.homographAttack.test(href)) {
+            flags.push('Possible homograph attack');
+            riskScore += 3;
+          }
+
+          // Check if link text doesn't match href domain
+          try {
+            const linkURL = new URL(href);
+            const linkDomain = linkURL.hostname;
+            
+            // If it's external and text suggests it should be the current domain
+            if (linkDomain !== currentDomain) {
+              if (linkText.includes(currentDomain) || linkText.includes('here') || linkText.includes('click here')) {
+                flags.push('Misleading link text');
+                riskScore += 2;
+              }
+            }
+
+            // Check for very new or suspicious domain patterns
+            if (linkDomain.length > 30) {
+              flags.push('Unusually long domain');
+              riskScore += 1;
+            }
+
+            // Check for multiple hyphens
+            if ((linkDomain.match(/-/g) || []).length > 2) {
+              flags.push('Multiple hyphens in domain');
+              riskScore += 1;
+            }
+          } catch (e) {
+            // Invalid URL
+          }
+
+          // If any flags were raised, add to suspicious links
+          if (flags.length > 0 && riskScore >= 2) {
+            suspiciousLinks.push({
+              href: href,
+              text: linkText.substring(0, 50),
+              flags: flags,
+              riskScore: riskScore,
+              riskLevel: riskScore >= 5 ? 'high' : riskScore >= 3 ? 'medium' : 'low'
+            });
+          }
+        } catch (err) {
+          console.warn('Error scanning link:', err);
+        }
+      });
+
+      // Sort by risk score
+      suspiciousLinks.sort((a, b) => b.riskScore - a.riskScore);
+
+      return {
+        found: suspiciousLinks.length > 0,
+        count: suspiciousLinks.length,
+        links: suspiciousLinks.slice(0, 20), // Limit to top 20
+        totalScanned: allLinks.length
+      };
+    }
 
     // Suspicious Scripts Detection (inline, external, dynamic)
     function detectSuspiciousScripts() {
@@ -256,6 +394,9 @@ if (window.__secureSightInjected) {
       console.warn("Favicon hash failed:", err);
     }
 
+    // NEW: Scan links for threats
+    results.suspiciousLinks = scanLinksForThreats();
+
     // Suspicious summary
     results.suspiciousSummary = {
       nonHttps: !results.isHttps,
@@ -266,58 +407,17 @@ if (window.__secureSightInjected) {
       externalDominant: results.resourceAnalysis.majorityExternal,
       faviconMismatch: results.favicon.sha256 && !results.favicon.matchedName,
       contentIntegrityMismatch: results.contentIntegrity.integrityOk === false,
+      suspiciousLinksFound: results.suspiciousLinks.found,
     };
-
-    // Suspicious scripts (static and dynamic)
-    function detectSuspiciousScripts() {
-      const susPatterns = [
-        /eval\s*\(/i,
-        /document\.write\s*\(/i,
-        /setTimeout\s*\(\s*['"`]/i,
-        /setInterval\s*\(\s*['"`]/i,
-        /atob\s*\(/i,
-        /btoa\s*\(/i,
-        /Function\s*\(/i,
-        /[\w$]\s*=\s*atob\s*\(/i,
-        /[\w$]\s*=\s*new\s+Function/i,
-      ];
-
-      let found = false;
-      let details = [];
-
-      // Scan all script tags
-      document.querySelectorAll("script").forEach((script) => {
-        const code = script.textContent || "";
-        susPatterns.forEach((pattern) => {
-          if (pattern.test(code)) {
-            found = true;
-            details.push({
-              pattern: pattern.toString(),
-              snippet: code.slice(0, 100),
-            });
-          }
-        });
-      });
-
-      // Scan the entire HTML as a fallback
-      const html = document.documentElement.innerHTML;
-      susPatterns.forEach((pattern) => {
-        if (pattern.test(html)) {
-          found = true;
-          details.push({
-            pattern: pattern.toString(),
-            snippet: html.match(pattern)[0],
-          });
-        }
-      });
-
-      return { found, details };
-    }
 
     // Listen for popup requests
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg.type === "checkSusScripts") {
         sendResponse(detectSuspiciousScripts());
+        return true;
+      }
+      if (msg.type === "getSuspiciousLinks") {
+        sendResponse(results.suspiciousLinks);
         return true;
       }
     });

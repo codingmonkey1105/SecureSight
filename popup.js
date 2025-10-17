@@ -10,6 +10,14 @@ if (!sslEl) {
   domainAgeEl.insertAdjacentElement("afterend", sslEl);
 }
 
+// Add suspicious links element
+let linksEl = document.getElementById("suspiciousLinksResult");
+if (!linksEl) {
+  linksEl = document.createElement("p");
+  linksEl.id = "suspiciousLinksResult";
+  sslEl.insertAdjacentElement("afterend", linksEl);
+}
+
 // Smart icon selector with safe/alert/unknown states
 function getIcon(status, unknown = false) {
   if (unknown) return "⚠️";
@@ -36,6 +44,24 @@ function renderTable(scan) {
   const faviconKnown = f.matchedName ? true : f.sha256 ? false : null;
   const externalSafe =
     r.externalPercent !== undefined ? r.externalPercent < 50 : null;
+
+  // Suspicious links data
+  const linkData = scan.suspiciousLinks || {};
+  const linksFound = linkData.found;
+  const linkCount = linkData.count || 0;
+  const totalScanned = linkData.totalScanned || 0;
+  
+  let linkMessage = "";
+  if (totalScanned === 0) {
+    linkMessage = "No links scanned";
+  } else if (!linksFound) {
+    linkMessage = `All ${totalScanned} links safe`;
+  } else {
+    const highRisk = (linkData.links || []).filter(l => l.riskLevel === 'high').length;
+    const mediumRisk = (linkData.links || []).filter(l => l.riskLevel === 'medium').length;
+    const lowRisk = (linkData.links || []).filter(l => l.riskLevel === 'low').length;
+    linkMessage = `${linkCount} suspicious (H:${highRisk} M:${mediumRisk} L:${lowRisk})`;
+  }
 
   const rows = [
     [
@@ -81,6 +107,11 @@ function renderTable(scan) {
         ? `Matched: ${f.matchedName}`
         : "Unknown / not in whitelist",
     ],
+    [
+      "Suspicious Links",
+      getIcon(!linksFound, totalScanned === 0),
+      linkMessage,
+    ],
   ];
 
   tableEl.innerHTML = rows
@@ -110,7 +141,7 @@ function renderDomainAge(createdDate) {
   }
 }
 
-// SSL Check Renderer - IMPROVED
+// SSL Check Renderer
 function renderSSLInfo(info) {
   if (!info) {
     sslEl.textContent = "SSL/TLS: Checking...";
@@ -147,10 +178,49 @@ function renderSSLInfo(info) {
   sslEl.style.color = "green";
 }
 
+// NEW: Render suspicious links
+function renderSuspiciousLinks(linkData) {
+  if (!linkData) {
+    linksEl.textContent = "Suspicious Links: Checking...";
+    linksEl.style.color = "grey";
+    return;
+  }
+
+  if (!linkData.found) {
+    linksEl.textContent = `✅ No suspicious links found (scanned ${linkData.totalScanned || 0} links)`;
+    linksEl.style.color = "green";
+    linksEl.title = "";
+    return;
+  }
+
+  // Count by risk level
+  const highRisk = linkData.links.filter(l => l.riskLevel === 'high').length;
+  const mediumRisk = linkData.links.filter(l => l.riskLevel === 'medium').length;
+  const lowRisk = linkData.links.filter(l => l.riskLevel === 'low').length;
+
+  linksEl.textContent = `❌ Found ${linkData.count} suspicious link(s): ${highRisk} high, ${mediumRisk} medium, ${lowRisk} low risk`;
+  linksEl.style.color = highRisk > 0 ? "red" : mediumRisk > 0 ? "orange" : "#fbc02d";
+  
+  // Create detailed tooltip
+  const tooltipLines = linkData.links.slice(0, 10).map(link => {
+    const riskIcon = link.riskLevel === 'high' ? '🚨' : link.riskLevel === 'medium' ? '⚠️' : '⚡';
+    return `${riskIcon} ${link.riskLevel.toUpperCase()} (${link.riskScore}): ${link.href.substring(0, 60)}${link.href.length > 60 ? '...' : ''}\nFlags: ${link.flags.join(', ')}\n`;
+  });
+  
+  if (linkData.count > 10) {
+    tooltipLines.push(`\n...and ${linkData.count - 10} more suspicious links`);
+  }
+  
+  linksEl.title = tooltipLines.join('\n');
+}
+
 // Inject scan
 scanButton.addEventListener("click", async () => {
   tableEl.innerHTML =
     "<tr><td colspan='2' style='text-align:center;'>Running scan...</td></tr>";
+  linksEl.textContent = "Suspicious Links: Scanning...";
+  linksEl.style.color = "grey";
+  
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
@@ -162,20 +232,27 @@ scanButton.addEventListener("click", async () => {
   chrome.runtime.onMessage.addListener(function onMsg(msg) {
     if (msg.type === "scan_complete") {
       renderTable(msg.results);
+      renderSuspiciousLinks(msg.results.suspiciousLinks);
       chrome.runtime.onMessage.removeListener(onMsg);
     }
   });
 
   setTimeout(async () => {
     const stored = await chrome.storage.local.get(["lastScan"]);
-    if (stored.lastScan) renderTable(stored.lastScan);
+    if (stored.lastScan) {
+      renderTable(stored.lastScan);
+      renderSuspiciousLinks(stored.lastScan.suspiciousLinks);
+    }
   }, 1000);
 });
 
 // On popup open → load last results + domain age + SSL check
 (async function init() {
   const stored = await chrome.storage.local.get(["lastScan"]);
-  if (stored.lastScan) renderTable(stored.lastScan);
+  if (stored.lastScan) {
+    renderTable(stored.lastScan);
+    renderSuspiciousLinks(stored.lastScan.suspiciousLinks);
+  }
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.url) {
