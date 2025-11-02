@@ -3,7 +3,7 @@
   "name": "SecureSight",
   "version": "1.0",
   "description": "Detects suspicious websites with basic security checks.",
-  "permissions": ["tabs", "activeTab", "scripting", "storage"],
+  "permissions": ["tabs", "activeTab", "scripting", "storage", "favicon"],
   "host_permissions": [
     "https://*/*",
     "http://*/*",
@@ -24,5 +24,11 @@
     "16": "padlock.png",
     "48": "padlock.png",
     "128": "padlock.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["_favicon/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

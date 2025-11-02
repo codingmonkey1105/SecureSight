@@ -1,4 +1,3 @@
-// content.js
 if (window.__secureSightInjected) {
   console.log("SecureSight: content script already injected.");
 } else {
@@ -344,55 +343,86 @@ if (window.__secureSightInjected) {
       console.warn("Resource analysis failed:", err);
     }
 
-    // Favicon hash
+    // ✅ FIXED: Favicon hash - use same method as background.js
     try {
-      async function fetchAsArrayBuffer(url) {
-        const resp = await fetch(url, { mode: "cors" });
-        if (!resp.ok) throw new Error("Fetch failed: " + resp.status);
-        return await resp.arrayBuffer();
+      console.log('🔍 Starting favicon hash computation...');
+
+      async function getFaviconHash() {
+        try {
+          // Find favicon URL the same way browser does
+          let faviconUrl = null;
+          const iconEl = document.querySelector("link[rel~='icon']");
+          const appleTouch = document.querySelector("link[rel='apple-touch-icon']");
+
+          if (iconEl && iconEl.href) {
+            faviconUrl = new URL(iconEl.href, window.location.origin).href;
+          } else if (appleTouch && appleTouch.href) {
+            faviconUrl = new URL(appleTouch.href, window.location.origin).href;
+          } else {
+            faviconUrl = `${window.location.origin}/favicon.ico`;
+          }
+
+          console.log('✓ Fetching favicon from:', faviconUrl);
+
+          // Fetch the favicon
+          const response = await fetch(faviconUrl, { mode: 'cors' });
+          if (!response.ok) {
+            throw new Error(`Favicon fetch failed: ${response.status}`);
+          }
+
+          const arrayBuffer = await response.arrayBuffer();
+
+          // Compute SHA-256 hash
+          const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+          console.log('✓ Favicon hash computed:', hashHex);
+
+          return {
+            url: faviconUrl,
+            sha256: hashHex
+          };
+
+        } catch (error) {
+          console.error('❌ Favicon hash failed:', error);
+          return {
+            url: null,
+            sha256: null,
+            error: error.message
+          };
+        }
       }
 
-      function toHex(buffer) {
-        const bytes = new Uint8Array(buffer);
-        return Array.from(bytes)
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-      }
+      // Execute the function
+      const faviconResult = await getFaviconHash();
+      results.favicon.url = faviconResult.url;
+      results.favicon.sha256 = faviconResult.sha256;
 
-      async function computeSha256(arrayBuffer) {
-        const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
-        return toHex(hashBuffer);
-      }
-
-      let faviconUrl = null;
-      const iconEl = document.querySelector("link[rel~='icon']");
-      const appleTouch = document.querySelector("link[rel='apple-touch-icon']");
-      if (iconEl && iconEl.href)
-        faviconUrl = new URL(iconEl.href, window.location.origin).href;
-      else if (appleTouch && appleTouch.href)
-        faviconUrl = new URL(appleTouch.href, window.location.origin).href;
-      else faviconUrl = `${window.location.origin}/favicon.ico`;
-
-      results.favicon.url = faviconUrl;
-
-      try {
-        const arr = await fetchAsArrayBuffer(faviconUrl);
-        results.favicon.sha256 = await computeSha256(arr);
-      } catch {
-        results.favicon.sha256 = null;
-      }
-
+      // Check against whitelist
       const stored = await new Promise((resolve) =>
-        chrome.storage.local.get(["faviconHashWhitelist"], resolve)
+        chrome.storage.local.get(['faviconHashWhitelist'], resolve)
       );
       const whitelist = (stored && stored.faviconHashWhitelist) || {};
+
+      console.log('📋 Whitelist entries:', Object.keys(whitelist).length);
+      console.log('🔍 Looking for hash:', faviconResult.sha256);
+
       results.favicon.matchedName =
         results.favicon.sha256 && whitelist[results.favicon.sha256]
           ? whitelist[results.favicon.sha256]
           : null;
+
+      if (results.favicon.matchedName) {
+        console.log('✅ FAVICON MATCHED:', results.favicon.matchedName);
+      } else {
+        console.log('⚠️ Favicon not in whitelist (Unknown site)');
+      }
+
     } catch (err) {
-      console.warn("Favicon hash failed:", err);
+      console.warn('❌ Favicon hash failed:', err);
     }
+
 
     // NEW: Scan links for threats
     results.suspiciousLinks = scanLinksForThreats();
