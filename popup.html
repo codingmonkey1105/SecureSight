@@ -1,27 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>SecureSight</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <h1>SecureSight</h1>
-    <button id="scanButton">Scan site now</button>
+<head>
+  <meta charset="UTF-8">
+  <title>SecureSight</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2>SecureSight Scanner</h2>
+  <button id="scanButton">Scan site now</button>
 
-    <div id="resultTableWrapper">
-      <table id="resultTable">
-        <tr>
-          <td colspan="2" style="text-align: center; color: #555">
-            No scan yet. Click 'Scan site now'.
-          </td>
-        </tr>
-      </table>
-    </div>
+  <div id="loading" style="display:none; margin-top:10px; font-style:italic; color: #666;">
+    ⏳ Scanning...
+  </div>
 
-    <div id="domainAgeResult">Domain age: Unknown</div>
-    <p id="susScriptResult">Checking for suspicious scripts...</p>
+  <!-- NEW: Threat Intelligence Alert Section -->
+  <div id="threatAlert" style="margin-top: 15px; padding: 10px; border-radius: 5px; display: none;">
+    <h3 style="margin: 0 0 5px 0; font-size: 14px;">🛡️ STRIDE Alert</h3>
+    <p id="threatStatus" style="margin: 0; font-size: 13px;"></p>
+  </div>
 
-    <script src="popup.js"></script>
-  </body>
+  <p id="domainAgeResult"></p>
+  <p id="sslResult"></p>
+  <p id="suspiciousLinksResult"></p>
+  <table id="resultTable"></table>
+
+  <script src="popup.js"></script>
+</body>
 </html>

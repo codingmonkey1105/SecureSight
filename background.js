@@ -25,6 +25,15 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
+// ===== API KEY (YOU NEED TO ADD THIS) =====
+const GOOGLE_SAFE_BROWSING_API_KEY = "AIzaSyAS3hoD7cE_aGaUKJu8xccTm7a8qCpQ8SU"; 
+// Get from: https://console.cloud.google.com/
+// Enable "Safe Browsing API" and create an API Key
+
+// Cache for threat intelligence results (to reduce API calls)
+const threatCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // ===== FAVICON WHITELIST AUTO-SEEDING =====
 
 function waitForTabComplete(tabId, timeout = 20000) {
@@ -129,11 +138,113 @@ async function autoSeedFaviconWhitelist(domainItems) {
   console.log(`✅ Favicon whitelist auto-seeded! Total entries: ${Object.keys(merged).length}`);
 }
 
+// ===== STRIDE ALERT - THREAT INTELLIGENCE =====
+
+async function checkGoogleSafeBrowsing(url) {
+  console.log("🔍 Checking Google Safe Browsing for:", url);
+  
+  try {
+    const endpoint = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${GOOGLE_SAFE_BROWSING_API_KEY}`;
+    
+    const requestBody = {
+      client: {
+        clientId: "SecureSight",
+        clientVersion: "1.0.0"
+      },
+      threatInfo: {
+        threatTypes: [
+          "MALWARE", 
+          "SOCIAL_ENGINEERING", 
+          "UNWANTED_SOFTWARE", 
+          "POTENTIALLY_HARMFUL_APPLICATION"
+        ],
+        platformTypes: ["ANY_PLATFORM"],
+        threatEntryTypes: ["URL"],
+        threatEntries: [{ url: url }]
+      }
+    };
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      throw new Error(`GSB API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.matches && data.matches.length > 0) {
+      const match = data.matches[0];
+      console.log("⚠️ Threat detected by Google Safe Browsing:", match.threatType);
+      
+      return {
+        safe: false,
+        threatType: match.threatType,
+        source: "Google Safe Browsing",
+        details: getThreatDescription(match.threatType)
+      };
+    }
+
+    console.log("✅ No threats found by Google Safe Browsing");
+    return {
+      safe: true,
+      threatType: null,
+      source: "Google Safe Browsing",
+      details: "No threats detected"
+    };
+
+  } catch (error) {
+    console.error("❌ Google Safe Browsing check failed:", error);
+    return {
+      safe: null,
+      threatType: null,
+      source: "Google Safe Browsing",
+      details: "Unable to verify site safety (API error)",
+      error: error.message
+    };
+  }
+}
+
+async function checkThreatIntelligence(url) {
+  console.log("🛡️ Starting STRIDE Alert threat check for:", url);
+
+  // Check cache first
+  const cachedResult = threatCache.get(url);
+  if (cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_DURATION) {
+    console.log("✓ Using cached threat result");
+    return cachedResult.data;
+  }
+
+  // Check Google Safe Browsing
+  const result = await checkGoogleSafeBrowsing(url);
+
+  // Cache the result
+  threatCache.set(url, {
+    data: result,
+    timestamp: Date.now()
+  });
+
+  console.log("✓ Threat check complete:", result);
+  return result;
+}
+
+function getThreatDescription(threatType) {
+  const descriptions = {
+    "MALWARE": "This site may host malware or harmful software",
+    "SOCIAL_ENGINEERING": "This site has been reported as a phishing attempt",
+    "UNWANTED_SOFTWARE": "This site may distribute unwanted software",
+    "POTENTIALLY_HARMFUL_APPLICATION": "This site may contain potentially harmful applications"
+  };
+  return descriptions[threatType] || "Potential security threat detected";
+}
+
 // ===== WHOIS LOOKUP =====
 
-// WHOIS Lookup Handler (using WhoisXML API key)
 async function fetchWhois(domain) {
-  //const apiKey = "at_Kzah5rJndT0qp9QX45yTnA9ef22Sc";
+  //const apiKey = "YOUR_WHOIS_API_KEY";
   const url = `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${apiKey}&domainName=${domain}&outputFormat=JSON`;
   try {
     const res = await fetch(url);
@@ -151,22 +262,14 @@ async function fetchWhois(domain) {
   }
 }
 
-// Threat intelligence placeholder
-async function threatIntelLookup(domain) {
-  // Need to Replace
-  return { flagged: null, source: null, details: null };
-}
-
-// ===== SSL/TLS CERTIFICATE CHECK (FIXED) =====
+// ===== SSL/TLS CERTIFICATE CHECK =====
 
 async function checkSSLCertificate(domain) {
   console.log("=== Starting SSL check for:", domain);
-  // Clean the domain
   const cleanDomain = domain.replace(/^www\./, "").split(":")[0];
   console.log("Clean domain:", cleanDomain);
 
   try {
-    // Method 1: Try crt.sh (most reliable for certificate info)
     const url = `https://crt.sh/?q=${encodeURIComponent(cleanDomain)}&output=json`;
     console.log("Fetching:", url);
 
@@ -176,7 +279,6 @@ async function checkSSLCertificate(domain) {
     clearTimeout(timeoutId);
 
     console.log("Response status:", response.status);
-    console.log("Response OK:", response.ok);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -186,11 +288,9 @@ async function checkSSLCertificate(domain) {
     console.log("Certificates found:", certificates.length);
 
     if (!Array.isArray(certificates) || certificates.length === 0) {
-      // Fallback to connectivity test
       return await checkSSLViaConnectivity(cleanDomain);
     }
 
-    // ✅ FIXED: Filter certificates with valid dates, then sort by expiration date
     const certsWithDates = certificates.filter(cert => cert.not_before && cert.not_after);
     console.log("Certificates with dates:", certsWithDates.length);
 
@@ -198,13 +298,10 @@ async function checkSSLCertificate(domain) {
       return await checkSSLViaConnectivity(cleanDomain);
     }
 
-    // Sort by expiration date (most recent expiry first)
     const sortedCerts = certsWithDates.sort((a, b) => {
       return new Date(b.not_after) - new Date(a.not_after);
     });
-    console.log("Most recent cert (by expiry):", sortedCerts[0].id);
 
-    // ✅ FIXED: Find FIRST certificate that's currently valid (not expired, not future-dated)
     const now = new Date();
     let validCert = null;
     
@@ -220,35 +317,24 @@ async function checkSSLCertificate(domain) {
     }
 
     if (!validCert) {
-      console.log("No currently valid certificate found, using connectivity test");
+      console.log("No currently valid certificate found");
       return await checkSSLViaConnectivity(cleanDomain);
     }
 
-    // Parse dates
     const notBefore = new Date(validCert.not_before);
     const notAfter = new Date(validCert.not_after);
-    console.log("Not Before:", notBefore);
-    console.log("Not After:", notAfter);
-    console.log("Now:", now);
-
-    // Check if certificate is currently valid
     const isValid = now >= notBefore && now <= notAfter;
-    console.log("Certificate valid:", isValid);
 
-    // Extract issuer organization
     let issuer = "Unknown";
     if (validCert.issuer_name) {
-      // Try to extract O= (Organization)
       const orgMatch = validCert.issuer_name.match(/O=([^,]+)/);
       if (orgMatch) {
         issuer = orgMatch[1].trim();
       } else {
-        // Try CN= (Common Name) as fallback
         const cnMatch = validCert.issuer_name.match(/CN=([^,]+)/);
         if (cnMatch) {
           issuer = cnMatch[1].trim();
         } else {
-          // Just take first 50 chars
           issuer = validCert.issuer_name.substring(0, 50);
         }
       }
@@ -266,20 +352,16 @@ async function checkSSLCertificate(domain) {
     return result;
   } catch (error) {
     console.error("crt.sh failed:", error);
-    console.log("Falling back to connectivity test...");
-    // Fallback: Test HTTPS connectivity
     return await checkSSLViaConnectivity(cleanDomain);
   }
 }
 
-// Fallback method: Test if HTTPS connection works
 async function checkSSLViaConnectivity(domain) {
   try {
     console.log("Testing HTTPS connectivity for:", domain);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    // Try to connect via HTTPS
     const response = await fetch(`https://${domain}/favicon.ico`, {
       method: "HEAD",
       mode: "no-cors",
@@ -311,7 +393,6 @@ async function checkSSLViaConnectivity(domain) {
 
 // ===== MESSAGE HANDLERS =====
 
-// Handle messages from popup or content scripts
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "whois_lookup") {
     fetchWhois(msg.domain)
@@ -320,12 +401,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
-  if (msg.type === "threat_lookup") {
-    threatIntelLookup(msg.domain)
-      .then((result) => sendResponse(result))
-      .catch(() =>
-        sendResponse({ flagged: null, source: null, details: null })
-      );
+  if (msg.type === "threat_check") {
+    console.log("Received threat check request for:", msg.url);
+    checkThreatIntelligence(msg.url)
+      .then((result) => {
+        console.log("Sending threat result:", result);
+        sendResponse(result);
+      })
+      .catch((error) => {
+        console.error("❌ Threat check error:", error);
+        sendResponse({
+          safe: null,
+          threatType: null,
+          source: "Error",
+          details: "Threat check failed",
+          error: error.message
+        });
+      });
     return true;
   }
 

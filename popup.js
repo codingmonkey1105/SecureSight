@@ -18,6 +18,10 @@ if (!linksEl) {
   sslEl.insertAdjacentElement("afterend", linksEl);
 }
 
+// NEW: Threat alert elements
+const threatAlertDiv = document.getElementById("threatAlert");
+const threatStatusP = document.getElementById("threatStatus");
+
 // Smart icon selector with safe/alert/unknown states
 function getIcon(status, unknown = false) {
   if (unknown) return "⚠️";
@@ -28,6 +32,113 @@ function getIcon(status, unknown = false) {
 function formatPercent(p) {
   if (p === undefined || isNaN(p)) return "-";
   return `${Math.round(p)}%`;
+}
+
+// NEW: Display threat intelligence results
+function displayThreatResult(threatResult) {
+  if (!threatResult) {
+    threatAlertDiv.style.display = "none";
+    return;
+  }
+
+  threatAlertDiv.style.display = "block";
+
+  if (threatResult.safe === true) {
+    // Safe site - green background
+    threatAlertDiv.style.backgroundColor = "#d4edda";
+    threatAlertDiv.style.borderLeft = "4px solid #28a745";
+    threatAlertDiv.style.color = "#155724";
+    threatStatusP.innerHTML = `✅ <strong>Safe</strong> - ${threatResult.details}`;
+  } else if (threatResult.safe === false) {
+    // Threat detected - red background
+    threatAlertDiv.style.backgroundColor = "#f8d7da";
+    threatAlertDiv.style.borderLeft = "4px solid #dc3545";
+    threatAlertDiv.style.color = "#721c24";
+    
+    const threatTypeLabel = getThreatLabel(threatResult.threatType);
+    threatStatusP.innerHTML = `⚠️ <strong>${threatTypeLabel} Detected!</strong><br>${threatResult.details}`;
+  } else {
+    // Unknown/error - yellow background
+    threatAlertDiv.style.backgroundColor = "#fff3cd";
+    threatAlertDiv.style.borderLeft = "4px solid #ffc107";
+    threatAlertDiv.style.color = "#856404";
+    threatStatusP.innerHTML = `⚠️ <strong>Unknown</strong> - ${threatResult.details}`;
+  }
+}
+
+function getThreatLabel(threatType) {
+  const labels = {
+    "MALWARE": "Malware",
+    "SOCIAL_ENGINEERING": "Phishing",
+    "UNWANTED_SOFTWARE": "Unwanted Software",
+    "POTENTIALLY_HARMFUL_APPLICATION": "Harmful Application"
+  };
+  return labels[threatType] || "Threat";
+}
+
+// NEW: Map security findings to STRIDE categories
+function getSTRIDEThreats(scan) {
+  const threats = {
+    spoofing: [],
+    tampering: [],
+    informationDisclosure: [],
+    denialOfService: [],
+    elevationOfPrivilege: []
+  };
+
+  if (!scan || !scan.suspiciousSummary) return threats;
+
+  const s = scan.suspiciousSummary;
+  const f = scan.favicon || {};
+  const linkData = scan.suspiciousLinks || {};
+
+  // Spoofing: Identity/authentication threats
+  if (s.typosquat) {
+    threats.spoofing.push("Typosquatting detected (fake brand URL)");
+  }
+  if (s.cyrillicInUrl) {
+    threats.spoofing.push("Homograph attack (lookalike characters)");
+  }
+  if (s.titleMismatch) {
+    threats.spoofing.push("Page title doesn't match domain");
+  }
+  if (f.sha256 && !f.matchedName) {
+    threats.spoofing.push("Favicon not recognized (possible impersonation)");
+  }
+
+  // Tampering: Data modification threats
+  if (s.nonHttps) {
+    threats.tampering.push("Unencrypted connection (data can be modified)");
+  }
+  if (scan.susScripts && scan.susScripts.found) {
+    threats.tampering.push("Suspicious scripts detected (code injection risk)");
+  }
+
+  // Information Disclosure: Data exposure threats
+  if (s.nonHttps) {
+    threats.informationDisclosure.push("Unencrypted connection (data visible to attackers)");
+  }
+  if (s.hasExternalScripts && s.externalScriptRatio > 50) {
+    threats.informationDisclosure.push("High external resource usage (data leakage risk)");
+  }
+
+  // Denial of Service: Availability threats
+  if (linkData.found) {
+    const highRisk = (linkData.links || []).filter(l => l.riskLevel === 'high').length;
+    if (highRisk > 0) {
+      threats.denialOfService.push(`${highRisk} high-risk malicious links (malware/ransomware risk)`);
+    }
+  }
+  if (s.manySubdomains) {
+    threats.denialOfService.push("Excessive subdomains (possible DDoS infrastructure)");
+  }
+
+  // Elevation of Privilege: Unauthorized access threats
+  if (scan.susScripts && scan.susScripts.found) {
+    threats.elevationOfPrivilege.push("Suspicious scripts (XSS/code execution risk)");
+  }
+
+  return threats;
 }
 
 function renderTable(scan) {
@@ -120,6 +231,32 @@ function renderTable(scan) {
         `<tr><td class="icon">${ic}</td><td><b>${label}</b>: ${msg}</td></tr>`
     )
     .join("");
+
+  // NEW: Add STRIDE threat analysis
+  const strideThreats = getSTRIDEThreats(scan);
+  const strideRows = [];
+
+  if (strideThreats.spoofing.length > 0) {
+    strideRows.push(`<tr style="background-color: #fff3cd;"><td colspan="2"><b>🎭 Spoofing Threats:</b><br>${strideThreats.spoofing.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+  }
+  if (strideThreats.tampering.length > 0) {
+    strideRows.push(`<tr style="background-color: #f8d7da;"><td colspan="2"><b>🔧 Tampering Threats:</b><br>${strideThreats.tampering.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+  }
+  if (strideThreats.informationDisclosure.length > 0) {
+    strideRows.push(`<tr style="background-color: #d1ecf1;"><td colspan="2"><b>📢 Information Disclosure:</b><br>${strideThreats.informationDisclosure.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+  }
+  if (strideThreats.denialOfService.length > 0) {
+    strideRows.push(`<tr style="background-color: #f8d7da;"><td colspan="2"><b>🚫 Denial of Service Risk:</b><br>${strideThreats.denialOfService.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+  }
+  if (strideThreats.elevationOfPrivilege.length > 0) {
+    strideRows.push(`<tr style="background-color: #f8d7da;"><td colspan="2"><b>👑 Elevation of Privilege:</b><br>${strideThreats.elevationOfPrivilege.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+  }
+
+  if (strideRows.length > 0) {
+    tableEl.innerHTML += `<tr><td colspan="2" style="text-align:center; background-color: #e9ecef; font-weight: bold; padding: 8px;">🛡️ STRIDE Threat Analysis</td></tr>` + strideRows.join('');
+  } else {
+    tableEl.innerHTML += `<tr><td colspan="2" style="text-align:center; background-color: #d4edda; color: #155724; padding: 8px;">✅ No STRIDE threats detected</td></tr>`;
+  }
 }
 
 // WHOIS / Domain age section
@@ -178,7 +315,7 @@ function renderSSLInfo(info) {
   sslEl.style.color = "green";
 }
 
-// NEW: Render suspicious links
+// Render suspicious links
 function renderSuspiciousLinks(linkData) {
   if (!linkData) {
     linksEl.textContent = "Suspicious Links: Checking...";
@@ -246,7 +383,7 @@ scanButton.addEventListener("click", async () => {
   }, 1000);
 });
 
-// On popup open → load last results + domain age + SSL check
+// On popup open → load last results + domain age + SSL check + THREAT CHECK
 (async function init() {
   const stored = await chrome.storage.local.get(["lastScan"]);
   if (stored.lastScan) {
@@ -264,6 +401,29 @@ scanButton.addEventListener("click", async () => {
       domainAgeEl.style.color = "grey";
       sslEl.textContent = "SSL/TLS: Checking...";
       sslEl.style.color = "grey";
+
+      // NEW: Check threat intelligence
+      if (threatAlertDiv && threatStatusP) {
+        threatAlertDiv.style.display = "block";
+        threatAlertDiv.style.backgroundColor = "#e7f3ff";
+        threatAlertDiv.style.borderLeft = "4px solid #2196F3";
+        threatAlertDiv.style.color = "#014361";
+        threatStatusP.innerHTML = "🔍 <strong>Checking for threats...</strong>";
+
+        chrome.runtime.sendMessage(
+          { type: "threat_check", url: tab.url },
+          (threatResult) => {
+            if (chrome.runtime.lastError) {
+              displayThreatResult({
+                safe: null,
+                details: "Unable to check threats"
+              });
+            } else {
+              displayThreatResult(threatResult);
+            }
+          }
+        );
+      }
 
       chrome.runtime.sendMessage({ type: "whois_lookup", domain }, (resp) => {
         if (chrome.runtime.lastError) {
