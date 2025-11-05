@@ -34,22 +34,28 @@
     <h1>SecureSight</h1>
     <button id="scanButton">Scan site now</button>
 
-  <div id="loading" style="display:none; margin-top:10px; font-style:italic; color: #666;">
-    ⏳ Scanning...
-  </div>
+    <div
+      id="loading"
+      style="display: none; margin-top: 10px; font-style: italic; color: #666"
+    >
+      ⏳ Scanning...
+    </div>
 
-  <!-- NEW: Threat Intelligence Alert Section -->
-  <div id="threatAlert" style="margin-top: 15px; padding: 10px; border-radius: 5px; display: none;">
-    <h3 style="margin: 0 0 5px 0; font-size: 14px;">🛡️ STRIDE Alert</h3>
-    <p id="threatStatus" style="margin: 0; font-size: 13px;"></p>
-  </div>
+    <!-- NEW: Threat Intelligence Alert Section -->
+    <div
+      id="threatAlert"
+      style="margin-top: 15px; padding: 10px; border-radius: 5px; display: none"
+    >
+      <h3 style="margin: 0 0 5px 0; font-size: 14px">🛡️ STRIDE Alert</h3>
+      <p id="threatStatus" style="margin: 0; font-size: 13px"></p>
+    </div>
 
-  <p id="domainAgeResult"></p>
-  <p id="sslResult"></p>
-  <p id="suspiciousLinksResult"></p>
-  <table id="resultTable"></table>
+    <p id="domainAgeResult"></p>
+    <p id="sslResult"></p>
+    <p id="suspiciousLinksResult"></p>
+    <table id="resultTable"></table>
 
-  <!-- <script src="popup.js"></script>
+    <!-- <script src="popup.js"></script>
 </body>
 </html> -->
     <button id="openStride">Open Risk Calculator</button>
@@ -62,6 +68,5 @@
 
     <!-- Existing popup logic -->
     <script src="popup.js"></script>
-
   </body>
 </html>

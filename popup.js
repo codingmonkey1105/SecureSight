@@ -45,21 +45,21 @@ function displayThreatResult(threatResult) {
 
   if (threatResult.safe === true) {
     // Safe site - green background
-    threatAlertDiv.style.backgroundColor = "#d4edda";
+    // threatAlertDiv.style.backgroundColor = "#d4edda";
     threatAlertDiv.style.borderLeft = "4px solid #28a745";
     threatAlertDiv.style.color = "#155724";
     threatStatusP.innerHTML = `✅ <strong>Safe</strong> - ${threatResult.details}`;
   } else if (threatResult.safe === false) {
     // Threat detected - red background
-    threatAlertDiv.style.backgroundColor = "#f8d7da";
+    // threatAlertDiv.style.backgroundColor = "#f8d7da";
     threatAlertDiv.style.borderLeft = "4px solid #dc3545";
     threatAlertDiv.style.color = "#721c24";
-    
+
     const threatTypeLabel = getThreatLabel(threatResult.threatType);
     threatStatusP.innerHTML = `⚠️ <strong>${threatTypeLabel} Detected!</strong><br>${threatResult.details}`;
   } else {
     // Unknown/error - yellow background
-    threatAlertDiv.style.backgroundColor = "#fff3cd";
+    // threatAlertDiv.style.backgroundColor = "#fff3cd";
     threatAlertDiv.style.borderLeft = "4px solid #ffc107";
     threatAlertDiv.style.color = "#856404";
     threatStatusP.innerHTML = `⚠️ <strong>Unknown</strong> - ${threatResult.details}`;
@@ -68,10 +68,10 @@ function displayThreatResult(threatResult) {
 
 function getThreatLabel(threatType) {
   const labels = {
-    "MALWARE": "Malware",
-    "SOCIAL_ENGINEERING": "Phishing",
-    "UNWANTED_SOFTWARE": "Unwanted Software",
-    "POTENTIALLY_HARMFUL_APPLICATION": "Harmful Application"
+    MALWARE: "Malware",
+    SOCIAL_ENGINEERING: "Phishing",
+    UNWANTED_SOFTWARE: "Unwanted Software",
+    POTENTIALLY_HARMFUL_APPLICATION: "Harmful Application",
   };
   return labels[threatType] || "Threat";
 }
@@ -83,7 +83,7 @@ function getSTRIDEThreats(scan) {
     tampering: [],
     informationDisclosure: [],
     denialOfService: [],
-    elevationOfPrivilege: []
+    elevationOfPrivilege: [],
   };
 
   if (!scan || !scan.suspiciousSummary) return threats;
@@ -116,26 +116,38 @@ function getSTRIDEThreats(scan) {
 
   // Information Disclosure: Data exposure threats
   if (s.nonHttps) {
-    threats.informationDisclosure.push("Unencrypted connection (data visible to attackers)");
+    threats.informationDisclosure.push(
+      "Unencrypted connection (data visible to attackers)"
+    );
   }
   if (s.hasExternalScripts && s.externalScriptRatio > 50) {
-    threats.informationDisclosure.push("High external resource usage (data leakage risk)");
+    threats.informationDisclosure.push(
+      "High external resource usage (data leakage risk)"
+    );
   }
 
   // Denial of Service: Availability threats
   if (linkData.found) {
-    const highRisk = (linkData.links || []).filter(l => l.riskLevel === 'high').length;
+    const highRisk = (linkData.links || []).filter(
+      (l) => l.riskLevel === "high"
+    ).length;
     if (highRisk > 0) {
-      threats.denialOfService.push(`${highRisk} high-risk malicious links (malware/ransomware risk)`);
+      threats.denialOfService.push(
+        `${highRisk} high-risk malicious links (malware/ransomware risk)`
+      );
     }
   }
   if (s.manySubdomains) {
-    threats.denialOfService.push("Excessive subdomains (possible DDoS infrastructure)");
+    threats.denialOfService.push(
+      "Excessive subdomains (possible DDoS infrastructure)"
+    );
   }
 
   // Elevation of Privilege: Unauthorized access threats
   if (scan.susScripts && scan.susScripts.found) {
-    threats.elevationOfPrivilege.push("Suspicious scripts (XSS/code execution risk)");
+    threats.elevationOfPrivilege.push(
+      "Suspicious scripts (XSS/code execution risk)"
+    );
   }
 
   return threats;
@@ -161,16 +173,22 @@ function renderTable(scan) {
   const linksFound = linkData.found;
   const linkCount = linkData.count || 0;
   const totalScanned = linkData.totalScanned || 0;
-  
+
   let linkMessage = "";
   if (totalScanned === 0) {
     linkMessage = "No links scanned";
   } else if (!linksFound) {
     linkMessage = `All ${totalScanned} links safe`;
   } else {
-    const highRisk = (linkData.links || []).filter(l => l.riskLevel === 'high').length;
-    const mediumRisk = (linkData.links || []).filter(l => l.riskLevel === 'medium').length;
-    const lowRisk = (linkData.links || []).filter(l => l.riskLevel === 'low').length;
+    const highRisk = (linkData.links || []).filter(
+      (l) => l.riskLevel === "high"
+    ).length;
+    const mediumRisk = (linkData.links || []).filter(
+      (l) => l.riskLevel === "medium"
+    ).length;
+    const lowRisk = (linkData.links || []).filter(
+      (l) => l.riskLevel === "low"
+    ).length;
     linkMessage = `${linkCount} suspicious (H:${highRisk} M:${mediumRisk} L:${lowRisk})`;
   }
 
@@ -218,11 +236,7 @@ function renderTable(scan) {
         ? `Matched: ${f.matchedName}`
         : "Unknown / not in whitelist",
     ],
-    [
-      "Suspicious Links",
-      getIcon(!linksFound, totalScanned === 0),
-      linkMessage,
-    ],
+    ["Suspicious Links", getIcon(!linksFound, totalScanned === 0), linkMessage],
   ];
 
   tableEl.innerHTML = rows
@@ -237,25 +251,47 @@ function renderTable(scan) {
   const strideRows = [];
 
   if (strideThreats.spoofing.length > 0) {
-    strideRows.push(`<tr style="background-color: #fff3cd;"><td colspan="2"><b>🎭 Spoofing Threats:</b><br>${strideThreats.spoofing.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+    strideRows.push(
+      `<tr style="color: #fff3cd;"><td colspan="2"><b>Spoofing Threats:</b><br>${strideThreats.spoofing
+        .map((t) => `• ${t}`)
+        .join("<br>")}</td></tr>`
+    );
   }
   if (strideThreats.tampering.length > 0) {
-    strideRows.push(`<tr style="background-color: #f8d7da;"><td colspan="2"><b>🔧 Tampering Threats:</b><br>${strideThreats.tampering.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+    strideRows.push(
+      `<tr style="color: #f8d7da;"><td colspan="2"><b>Tampering Threats:</b><br>${strideThreats.tampering
+        .map((t) => `• ${t}`)
+        .join("<br>")}</td></tr>`
+    );
   }
   if (strideThreats.informationDisclosure.length > 0) {
-    strideRows.push(`<tr style="background-color: #d1ecf1;"><td colspan="2"><b>📢 Information Disclosure:</b><br>${strideThreats.informationDisclosure.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+    strideRows.push(
+      `<tr style="color: #d1ecf1;"><td colspan="2"><b>Information Disclosure:</b><br>${strideThreats.informationDisclosure
+        .map((t) => `• ${t}`)
+        .join("<br>")}</td></tr>`
+    );
   }
   if (strideThreats.denialOfService.length > 0) {
-    strideRows.push(`<tr style="background-color: #f8d7da;"><td colspan="2"><b>🚫 Denial of Service Risk:</b><br>${strideThreats.denialOfService.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+    strideRows.push(
+      `<tr style="color: #f8d7da;"><td colspan="2"><b>Denial of Service Risk:</b><br>${strideThreats.denialOfService
+        .map((t) => `• ${t}`)
+        .join("<br>")}</td></tr>`
+    );
   }
   if (strideThreats.elevationOfPrivilege.length > 0) {
-    strideRows.push(`<tr style="background-color: #f8d7da;"><td colspan="2"><b>👑 Elevation of Privilege:</b><br>${strideThreats.elevationOfPrivilege.map(t => `• ${t}`).join('<br>')}</td></tr>`);
+    strideRows.push(
+      `<tr style="color: #f8d7da;"><td colspan="2"><b>Elevation of Privilege:</b><br>${strideThreats.elevationOfPrivilege
+        .map((t) => `• ${t}`)
+        .join("<br>")}</td></tr>`
+    );
   }
 
   if (strideRows.length > 0) {
-    tableEl.innerHTML += `<tr><td colspan="2" style="text-align:center; background-color: #e9ecef; font-weight: bold; padding: 8px;">🛡️ STRIDE Threat Analysis</td></tr>` + strideRows.join('');
+    tableEl.innerHTML +=
+      `<tr><td colspan="2" style="text-align:center; background-color: #000000ff; font-weight: bold; padding: 8px;">🛡️ STRIDE Threat Analysis</td></tr>` +
+      strideRows.join("");
   } else {
-    tableEl.innerHTML += `<tr><td colspan="2" style="text-align:center; background-color: #d4edda; color: #155724; padding: 8px;">✅ No STRIDE threats detected</td></tr>`;
+    tableEl.innerHTML += `<tr><td colspan="2" style="text-align:center; color: #d4edda; color: #155724; padding: 8px;">✅ No STRIDE threats detected</td></tr>`;
   }
 }
 
@@ -324,31 +360,45 @@ function renderSuspiciousLinks(linkData) {
   }
 
   if (!linkData.found) {
-    linksEl.textContent = `✅ No suspicious links found (scanned ${linkData.totalScanned || 0} links)`;
+    linksEl.textContent = `✅ No suspicious links found (scanned ${
+      linkData.totalScanned || 0
+    } links)`;
     linksEl.style.color = "green";
     linksEl.title = "";
     return;
   }
 
   // Count by risk level
-  const highRisk = linkData.links.filter(l => l.riskLevel === 'high').length;
-  const mediumRisk = linkData.links.filter(l => l.riskLevel === 'medium').length;
-  const lowRisk = linkData.links.filter(l => l.riskLevel === 'low').length;
+  const highRisk = linkData.links.filter((l) => l.riskLevel === "high").length;
+  const mediumRisk = linkData.links.filter(
+    (l) => l.riskLevel === "medium"
+  ).length;
+  const lowRisk = linkData.links.filter((l) => l.riskLevel === "low").length;
 
   linksEl.textContent = `❌ Found ${linkData.count} suspicious link(s): ${highRisk} high, ${mediumRisk} medium, ${lowRisk} low risk`;
-  linksEl.style.color = highRisk > 0 ? "red" : mediumRisk > 0 ? "orange" : "#fbc02d";
-  
+  linksEl.style.color =
+    highRisk > 0 ? "red" : mediumRisk > 0 ? "orange" : "#fbc02d";
+
   // Create detailed tooltip
-  const tooltipLines = linkData.links.slice(0, 10).map(link => {
-    const riskIcon = link.riskLevel === 'high' ? '🚨' : link.riskLevel === 'medium' ? '⚠️' : '⚡';
-    return `${riskIcon} ${link.riskLevel.toUpperCase()} (${link.riskScore}): ${link.href.substring(0, 60)}${link.href.length > 60 ? '...' : ''}\nFlags: ${link.flags.join(', ')}\n`;
+  const tooltipLines = linkData.links.slice(0, 10).map((link) => {
+    const riskIcon =
+      link.riskLevel === "high"
+        ? "🚨"
+        : link.riskLevel === "medium"
+        ? "⚠️"
+        : "⚡";
+    return `${riskIcon} ${link.riskLevel.toUpperCase()} (${
+      link.riskScore
+    }): ${link.href.substring(0, 60)}${
+      link.href.length > 60 ? "..." : ""
+    }\nFlags: ${link.flags.join(", ")}\n`;
   });
-  
+
   if (linkData.count > 10) {
     tooltipLines.push(`\n...and ${linkData.count - 10} more suspicious links`);
   }
-  
-  linksEl.title = tooltipLines.join('\n');
+
+  linksEl.title = tooltipLines.join("\n");
 }
 
 // Inject scan
@@ -357,7 +407,7 @@ scanButton.addEventListener("click", async () => {
     "<tr><td colspan='2' style='text-align:center;'>Running scan...</td></tr>";
   linksEl.textContent = "Suspicious Links: Scanning...";
   linksEl.style.color = "grey";
-  
+
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
@@ -416,7 +466,7 @@ scanButton.addEventListener("click", async () => {
             if (chrome.runtime.lastError) {
               displayThreatResult({
                 safe: null,
-                details: "Unable to check threats"
+                details: "Unable to check threats",
               });
             } else {
               displayThreatResult(threatResult);
