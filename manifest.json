@@ -6,7 +6,9 @@
   "permissions":  [
         "activeTab",   
         "scripting", 
-        "storage"
+        "storage",
+        "tabs",
+        "favicon"
     ], 
   "host_permissions": [
     "https://www.whoisxmlapi.com/*",
