@@ -3,18 +3,14 @@
   "name": "SecureSight",
   "version": "1.0",
   "description": "Detects suspicious websites with basic security checks.",
-  "permissions":  [
-        "activeTab",   
-        "scripting", 
-        "storage",
-        "tabs",
-        "favicon"
-    ], 
+  "permissions": ["tabs", "activeTab", "scripting", "storage", "favicon"],
   "host_permissions": [
+    "https://*/*",
+    "http://*/*",
     "https://www.whoisxmlapi.com/*",
     "https://crt.sh/*" 
   ],
-  "optinal_host_permissions": [
+  "optional_host_permissions": [
     "https://*/*",
     "http://*/*"
   ],
@@ -39,7 +35,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["stride.html", "stride.simple.js", "style.css", "_favicon/*"],
+      "resources": ["_favicon/*","stride.html", "stride.simple.js", "style.css"],
       "matches": ["<all_urls>"]
     }
   ]

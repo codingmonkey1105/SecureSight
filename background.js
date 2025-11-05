@@ -1,3 +1,7 @@
+importScripts('config.js'); // for service worker (background.js)
+const WHOIS_API_KEY = API_KEYS.WHOIS_XML_API;
+const GSB_API_KEY = API_KEYS.GOOGLE_SAFE_BROWSING;
+
 // Runs once when the extension is installed
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log("SecureSight extension installed.");
@@ -10,14 +14,14 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     const trustedDomains = [
       //{ domain: "https://www.google.com", label: "Google" },
       //{ domain: "https://www.github.com", label: "GitHub" },
-      { domain: "https://www.amazon.com", label: "Amazon" }//,
+      { domain: "https://www.amazon.com", label: "Amazon" },
       //{ domain: "https://www.paypal.com", label: "PayPal" },
       //{ domain: "https://www.facebook.com", label: "Facebook" },
       //{ domain: "https://www.netflix.com", label: "Netflix" },
       //{ domain: "https://www.linkedin.com", label: "LinkedIn" },
       //{ domain: "https://www.twitter.com", label: "Twitter" },
       //{ domain: "https://www.microsoft.com", label: "Microsoft" },
-      //{ domain: "https://www.apple.com", label: "Apple" }
+      { domain: "https://www.apple.com", label: "Apple" }
     ];
     
     // Auto-seed the whitelist
@@ -26,7 +30,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 });
 
 // ===== API KEY (YOU NEED TO ADD THIS) =====
-const GOOGLE_SAFE_BROWSING_API_KEY = "AIzaSyAS3hoD7cE_aGaUKJu8xccTm7a8qCpQ8SU"; 
+//const GOOGLE_SAFE_BROWSING_API_KEY = "AIzaSyAS3hoD7cE_aGaUKJu8xccTm7a8qCpQ8SU"; 
 // Get from: https://console.cloud.google.com/
 // Enable "Safe Browsing API" and create an API Key
 
@@ -144,7 +148,7 @@ async function checkGoogleSafeBrowsing(url) {
   console.log("🔍 Checking Google Safe Browsing for:", url);
   
   try {
-    const endpoint = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${GOOGLE_SAFE_BROWSING_API_KEY}`;
+    const endpoint = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${GSB_API_KEY}`;
     
     const requestBody = {
       client: {
@@ -244,8 +248,8 @@ function getThreatDescription(threatType) {
 // ===== WHOIS LOOKUP =====
 
 async function fetchWhois(domain) {
-  const apiKey = "at_Kzah5rJndT0qp9QX45yTnA9ef22Sc";
-  const url = `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${apiKey}&domainName=${domain}&outputFormat=JSON`;
+  //const apiKey = "at_Kzah5rJndT0qp9QX45yTnA9ef22Sc";
+  const url = `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${WHOIS_API_KEY}&domainName=${domain}&outputFormat=JSON`;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Network error: ${res.status}`);
