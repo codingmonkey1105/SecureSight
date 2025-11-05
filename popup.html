@@ -1,11 +1,38 @@
-<head>
-  <meta charset="UTF-8">
-  <title>SecureSight</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h2>SecureSight Scanner</h2>
-  <button id="scanButton">Scan site now</button>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SecureSight</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      #strideAnalysis {
+        margin-top: 16px;
+        background-color: #0a0e27;
+        border: 1px solid #333;
+        border-radius: 8px;
+        overflow-y: auto;
+        max-height: 520px;
+        width: 100%;
+      }
+      #openStride {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        font-weight: 600;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 12px;
+      }
+      #openStride:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SecureSight</h1>
+    <button id="scanButton">Scan site now</button>
 
   <div id="loading" style="display:none; margin-top:10px; font-style:italic; color: #666;">
     ⏳ Scanning...
@@ -22,6 +49,19 @@
   <p id="suspiciousLinksResult"></p>
   <table id="resultTable"></table>
 
-  <script src="popup.js"></script>
+  <!-- <script src="popup.js"></script>
 </body>
+</html> -->
+    <button id="openStride">Open Risk Calculator</button>
+
+    <!-- <div id="strideAnalysis">
+      <p style="text-align: center; color: white; padding: 10px;">
+        Loading STRIDE risk analysis...
+      </p>
+    </div> -->
+
+    <!-- Existing popup logic -->
+    <script src="popup.js"></script>
+
+  </body>
 </html>

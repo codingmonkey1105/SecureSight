@@ -27,7 +27,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["_favicon/*"],
+      "resources": ["stride.html", "stride.simple.js", "style.css", "_favicon/*"],
       "matches": ["<all_urls>"]
     }
   ]

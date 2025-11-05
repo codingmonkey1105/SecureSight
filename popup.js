@@ -477,3 +477,7 @@ async function checkSusScripts() {
 }
 
 document.addEventListener("DOMContentLoaded", checkSusScripts);
+
+document.getElementById("openStride").addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("stride.html") });
+});

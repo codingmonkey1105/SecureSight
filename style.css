@@ -118,3 +118,10 @@ h1 {
 #resultTableWrapper::-webkit-scrollbar-thumb:hover {
   background-color: #b05601;
 }
+/* STRIDE Dashboard Enhancements */
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
