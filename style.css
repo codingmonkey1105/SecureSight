@@ -79,6 +79,7 @@ h1 {
 }
 
 /* Status colors */
+
 .status-safe {
   color: #ffffff;
 }
@@ -92,6 +93,7 @@ h1 {
 }
 
 /* Scrollable table if too many rows */
+
 #resultTableWrapper {
   max-height: 300px;
   overflow-y: auto;
@@ -119,9 +121,11 @@ h1 {
   background-color: #b05601;
 }
 /* STRIDE Dashboard Enhancements */
+
 #root {
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 20px;
 }
+

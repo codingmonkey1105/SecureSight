@@ -1,4 +1,4 @@
-body {
+/* body {
   margin: 0;
   font-family: "Segoe UI", system-ui, sans-serif;
   background-color: #0a0e27;
@@ -24,7 +24,7 @@ body {
 }
 
 /* Summary Section */
-.summary-card {
+/* .summary-card {
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -54,9 +54,9 @@ body {
 .summary-stat p {
   color: #bbb;
   margin: 5px 0 0;
-}
+} */
 
-/* Tags */
+/* Tags
 .risk-tags {
   text-align: center;
   margin: 15px 0 25px;
@@ -72,10 +72,10 @@ body {
 .tag.critical { background: #e74c3c; color: #000;  }
 .tag.high { background: #e67e22; color: #000; }
 .tag.medium { background: #f1c40f; color: #000; }
-.tag.low { background: #2ecc71; color: #000; }
+.tag.low { background: #2ecc71; color: #000; } */
 
 /* Category Cards */
-.category-card {
+/* .category-card {
   background: #1a1f3a;
   border-radius: 12px;
   padding: 20px;
@@ -105,10 +105,10 @@ body {
   height: 100%;
   background: #6ea0ff;
   border-radius: 5px;
-}
+} */
 
 /* Threat Items */
-.threats {
+/* .threats {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -131,10 +131,10 @@ body {
 
 .score-label {
   font-weight: 600;
-}
+} */
 
 /* Guide Section */
-.guide {
+/* .guide {
   background: #1a1f3a;
   border-radius: 12px;
   padding: 20px;
@@ -162,10 +162,161 @@ body {
   margin: 5px 0 0;
   font-size: 14px;
   color: #bbb;
-}
+} */
 
 /* Risk colors */
-.low { color: #2ecc71; }
+/* .low { color: #2ecc71; }
 .medium { color: #f1c40f; }
 .high { color: #e67e22; }
-.critical { color: #e74c3c; }
+.critical { color: #e74c3c; } */ 
+
+/* *{
+  background-color: #141638;
+} */
+body {
+  background-color: #0b0d26;
+  color: #cfcfff;
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  padding: 40px;
+}
+
+h1 {
+  font-size: 2em;
+  color: #a79bff;
+  margin-bottom: 0.2em;
+}
+
+.subtitle {
+  color: #aaa;
+  margin-bottom: 2em;
+}
+
+.upload-box {
+  background: #141638;
+  padding: 20px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-bottom: 20px;
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: white;
+  cursor: pointer;
+  font-size: 1em;
+  margin: 5px;
+  transition: 0.2s;
+}
+
+.btn:hover {
+  opacity: 0.9;
+  transform: scale(1.03);
+}
+
+.purple { background-color: #a580ff; }
+.blue { background-color: #5d8eff; }
+
+#loading {
+  margin-top: 20px;
+  color: #a79bff;
+}
+
+.hidden { display: none; }
+
+.dashboard {
+  background: #141638;
+  margin-top: 20px;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: left;
+}
+
+.summary-card {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: #1c1e45;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+}
+
+.summary-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.summary-stat h2 {
+  margin: 0;
+  color: white;
+}
+
+.low { color: #00ff88; }
+.medium { color: #ffd94d; }
+.high { color: #ff7a00; }
+.critical { color: #ff4d4d; }
+
+.category-card {
+  margin-top: 20px;
+  background: #1c1e45;
+  border-radius: 12px;
+  padding: 15px;
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #333;
+  border-radius: 6px;
+  margin: 10px 0;
+}
+
+.progress {
+  height: 6px;
+  background: #a580ff;
+  border-radius: 6px;
+}
+
+.threat {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid #222;
+}
+
+.tag {
+  margin: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+.tag.low { background: #005f3c; }
+.tag.medium { background: #6a5700; }
+.tag.high { background: #7a2b00; }
+.tag.critical { background: #680000; }
+
+.guide {
+  margin-top: 20px;
+  background: #1c1e45;
+  border-radius: 12px;
+  padding: 15px;
+}
+
+.level {
+  margin: 8px 0;
+}
+

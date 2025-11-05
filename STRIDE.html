@@ -1,12 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>STRIDE Risk Dashboard</title>
-    <link rel="stylesheet" href="stride.css" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script src="stride.simple.js"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STRIDE Dynamic Security Analyzer</title>
+  <link rel="stylesheet" href="STRIDE.css">
+</head>
+<body>
+  <div class="container">
+    <h1>STRIDE Dynamic Security Analyzer</h1>
+    <p class="subtitle">Real-time threat detection for SecureSight Extension</p>
+
+    <div class="upload-box">
+      <input type="file" id="fileInput" multiple hidden>
+      <button id="uploadBtn" class="btn purple">📂 Upload Extension Files</button>
+      <button id="analyzeBtn" class="btn blue">🔄 Re-analyze Files</button>
+      <p id="fileInfo">Loaded: No files loaded</p>
+    </div>
+
+    <div id="loading" class="hidden">Analyzing security threats...</div>
+    <div id="results"></div>
+  </div>
+
+  <script src="STRIDE.simple.js"></script>
+</body>
 </html>
