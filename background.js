@@ -8,16 +8,16 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     
     // Define your trusted domains
     const trustedDomains = [
-      { domain: "https://www.google.com", label: "Google" },
-      { domain: "https://www.github.com", label: "GitHub" },
-      { domain: "https://www.amazon.com", label: "Amazon" },
-      { domain: "https://www.paypal.com", label: "PayPal" },
-      { domain: "https://www.facebook.com", label: "Facebook" },
-      { domain: "https://www.netflix.com", label: "Netflix" },
-      { domain: "https://www.linkedin.com", label: "LinkedIn" },
-      { domain: "https://www.twitter.com", label: "Twitter" },
-      { domain: "https://www.microsoft.com", label: "Microsoft" },
-      { domain: "https://www.apple.com", label: "Apple" }
+      //{ domain: "https://www.google.com", label: "Google" },
+      //{ domain: "https://www.github.com", label: "GitHub" },
+      { domain: "https://www.amazon.com", label: "Amazon" }//,
+      //{ domain: "https://www.paypal.com", label: "PayPal" },
+      //{ domain: "https://www.facebook.com", label: "Facebook" },
+      //{ domain: "https://www.netflix.com", label: "Netflix" },
+      //{ domain: "https://www.linkedin.com", label: "LinkedIn" },
+      //{ domain: "https://www.twitter.com", label: "Twitter" },
+      //{ domain: "https://www.microsoft.com", label: "Microsoft" },
+      //{ domain: "https://www.apple.com", label: "Apple" }
     ];
     
     // Auto-seed the whitelist
@@ -244,7 +244,7 @@ function getThreatDescription(threatType) {
 // ===== WHOIS LOOKUP =====
 
 async function fetchWhois(domain) {
-  //const apiKey = "YOUR_WHOIS_API_KEY";
+  const apiKey = "at_Kzah5rJndT0qp9QX45yTnA9ef22Sc";
   const url = `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${apiKey}&domainName=${domain}&outputFormat=JSON`;
   try {
     const res = await fetch(url);
