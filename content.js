@@ -465,3 +465,10 @@ if (window.__secureSightInjected) {
     console.log("SecureSight scan results:", results);
   })();
 }
+chrome.runtime.sendMessage({
+  type: 'scan_complete',
+  nonce: messageAuth.generateNonce(),
+  sequence: messageAuth.getNextSequence(),
+  timestamp: Date.now(),
+  results: results
+});

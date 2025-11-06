@@ -678,3 +678,16 @@ document.addEventListener("DOMContentLoaded", checkSusScripts);
 document.getElementById("openStride").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("stride.html") });
 });
+function displayThreatResult(threatResult) {
+  // Validate all fields are primitive types or plain objects
+  if (typeof threatResult.safe === 'function' || 
+      typeof threatResult.details === 'function') {
+    console.error('[SECURITY] Received function in data - rejecting');
+    return;
+  }
+  
+  // Use textContent instead of innerHTML for user-controlled content
+  const safeDetails = document.createTextNode(threatResult.details || '').textContent;
+  
+  threatStatusP.textContent = `${threatResult.safe ? '✅' : '⚠️'} ${safeDetails}`;
+}

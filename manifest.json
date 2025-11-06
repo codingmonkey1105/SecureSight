@@ -8,17 +8,12 @@
     "https://*/*",
     "http://*/*",
     "https://www.whoisxmlapi.com/*",
-    "https://crt.sh/*" 
-  ],
-  "optional_host_permissions": [
-    "https://*/*",
-    "http://*/*"
-  ],
-  "optional_permissions":[
-    "tabs"
+    "https://crt.sh/*",
+    "https://safebrowsing.googleapis.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_popup": "popup.html",
@@ -28,14 +23,16 @@
       "128": "padlock.png"
     }
   },
-  "icons": {
-    "16": "padlock.png",
-    "48": "padlock.png",
-    "128": "padlock.png"
-  },
   "web_accessible_resources": [
     {
-      "resources": ["_favicon/*","stride.html", "stride.simple.js", "style.css"],
+      "resources": [
+        "_favicon/*",
+        "stride.html", 
+        "stride.simple.js", 
+        "style.css",
+        "storage-integrity.js",
+        "secure-logger.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ]
